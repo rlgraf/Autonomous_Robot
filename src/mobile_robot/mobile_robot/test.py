@@ -72,7 +72,7 @@ def main(args=None):
         # this is a non blocking statement in contrast to rclpy.spin()
         rclpy.spin_once(TestNode)
         # sleep for the specified period
-        rate.speed()
+        rate.sleep()
 
     # destroy the node
     TestNode.destroy_node()

@@ -1,0 +1,22 @@
+[0.891s] Invoking command in '/home/russell/Autonomous_Robot/src/mobile_robot': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/russell/Autonomous_Robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russell/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mobile_robot build --build-base /home/russell/Autonomous_Robot/build/mobile_robot/build install --record /home/russell/Autonomous_Robot/build/mobile_robot/install.log --single-version-externally-managed install_data
+[1.185s] running egg_info
+[1.206s] writing ../../build/mobile_robot/mobile_robot.egg-info/PKG-INFO
+[1.206s] writing dependency_links to ../../build/mobile_robot/mobile_robot.egg-info/dependency_links.txt
+[1.206s] writing entry points to ../../build/mobile_robot/mobile_robot.egg-info/entry_points.txt
+[1.207s] writing requirements to ../../build/mobile_robot/mobile_robot.egg-info/requires.txt
+[1.207s] writing top-level names to ../../build/mobile_robot/mobile_robot.egg-info/top_level.txt
+[1.256s] reading manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[1.257s] writing manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[1.257s] running build
+[1.257s] running build_py
+[1.257s] running install
+[1.263s] running install_lib
+[1.286s] running install_data
+[1.287s] copying parameters/bridge_parameters.yaml -> /home/russell/Autonomous_Robot/install/mobile_robot/share/mobile_robot/parameters
+[1.287s] running install_egg_info
+[1.312s] removing '/home/russell/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info' (and everything under it)
+[1.312s] Copying ../../build/mobile_robot/mobile_robot.egg-info to /home/russell/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info
+[1.313s] running install_scripts
+[1.458s] Installing publisher script to /home/russell/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[1.458s] writing list of installed files to '/home/russell/Autonomous_Robot/build/mobile_robot/install.log'
+[1.492s] Invoked command in '/home/russell/Autonomous_Robot/src/mobile_robot' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/russell/Autonomous_Robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russell/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mobile_robot build --build-base /home/russell/Autonomous_Robot/build/mobile_robot/build install --record /home/russell/Autonomous_Robot/build/mobile_robot/install.log --single-version-externally-managed install_data

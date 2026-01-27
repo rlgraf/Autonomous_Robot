@@ -1,0 +1,44 @@
+[2.201s] Invoking command in '/home/russell/Autonomous_Robot/src/mobile_robot': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages: /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/mobile_robot build --build-base /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build install --record /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/install.log --single-version-externally-managed install_data
+[2.397s] running egg_info
+[2.397s] creating build/mobile_robot/mobile_robot.egg-info
+[2.407s] writing build/mobile_robot/mobile_robot.egg-info/PKG-INFO
+[2.407s] writing dependency_links to build/mobile_robot/mobile_robot.egg-info/dependency_links.txt
+[2.407s] writing entry points to build/mobile_robot/mobile_robot.egg-info/entry_points.txt
+[2.407s] writing requirements to build/mobile_robot/mobile_robot.egg-info/requires.txt
+[2.408s] writing top-level names to build/mobile_robot/mobile_robot.egg-info/top_level.txt
+[2.408s] writing manifest file 'build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[2.428s] reading manifest file 'build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[2.429s] writing manifest file 'build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[2.429s] running build
+[2.429s] running build_py
+[2.429s] creating /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build
+[2.429s] creating /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib
+[2.429s] creating /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+[2.430s] copying mobile_robot/test.py -> /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+[2.447s] copying mobile_robot/__init__.py -> /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+[2.447s] running install
+[2.453s] running install_lib
+[2.463s] creating /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+[2.464s] copying /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/test.py -> /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+[2.464s] copying /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/__init__.py -> /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+[2.464s] byte-compiling /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/test.py to test.cpython-312.pyc
+[2.464s] byte-compiling /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__init__.py to __init__.cpython-312.pyc
+[2.464s] running install_data
+[2.465s] creating /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/ament_index
+[2.465s] creating /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/ament_index/resource_index
+[2.465s] creating /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/ament_index/resource_index/packages
+[2.465s] copying resource/mobile_robot -> /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/ament_index/resource_index/packages
+[2.465s] copying package.xml -> /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot
+[2.465s] creating /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+[2.466s] copying launch/gazebo_model.launch.py -> /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+[2.466s] creating /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/model
+[2.466s] copying model/robot.xacro -> /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/model
+[2.497s] copying model/robot.gazebo -> /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/model
+[2.504s] creating /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/parameters
+[2.504s] copying parameters/bridge_parameters.yaml -> /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/parameters
+[2.525s] running install_egg_info
+[2.537s] Copying build/mobile_robot/mobile_robot.egg-info to /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info
+[2.538s] running install_scripts
+[2.617s] Installing publisher script to /home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+[2.617s] writing list of installed files to '/home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/install.log'
+[2.640s] Invoked command in '/home/russell/Autonomous_Robot/src/mobile_robot' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russell/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages: /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/mobile_robot build --build-base /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build install --record /home/russell/Autonomous_Robot/src/mobile_robot/build/mobile_robot/install.log --single-version-externally-managed install_data

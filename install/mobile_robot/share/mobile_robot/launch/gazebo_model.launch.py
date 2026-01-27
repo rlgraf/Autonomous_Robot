@@ -46,6 +46,7 @@ def generate_launch_description():
 
     # this is the launch file from the gazebo_ros package
     gazebo_rosPackageLaunch=PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ros_gz_sim'),
+                                                                        'launch', 'gz_sim.launch.py'))
     
     
     # this is the launch description
@@ -56,7 +57,7 @@ def generate_launch_description():
     # this is if you are using an empty world model
     gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch,
                                           launch_arguments={'gz_args': ['-r -v -v4 empty.sdf'],
-                                                            'on_exit_shutdown': 'true'}.items())                                                                   'launch', 'gz_sim.launch.py'))
+                                                            'on_exit_shutdown': 'true'}.items())                                                
 
 
     # Gazebo node
@@ -64,7 +65,7 @@ def generate_launch_description():
         package='ros_gz_sim',
         executable='create',
         arguments=[
-            '-name', robotXacroname,
+            '-name', robotXacroName,
             '-topic', 'robot_description'
         ],
         output='screen'
@@ -105,7 +106,7 @@ def generate_launch_description():
     launchDescriptionObject.add_action(gazeboLaunch)
 
     # we add the two nodes
-    launchDescriptionObject.add_action(spawnNodeGazebo)
+    launchDescriptionObject.add_action(spawnModelNodeGazebo)
     launchDescriptionObject.add_action(nodeRobotStatePublisher)
     launchDescriptionObject.add_action(start_gazebo_ros_bridge_cmd)
 
