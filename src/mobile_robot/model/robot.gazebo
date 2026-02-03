@@ -34,6 +34,24 @@
     <material>Gazebo/Blue</material>
 </gazebo>
 
+<gazebo reference="top_ball_link">
+    <mu1>0.000002</mu1>
+    <mu2>0.000002</mu2>
+    <material>Gazebo/Black</material>
+</gazebo>
+
+<gazebo reference="left_ear_link">
+    <mu1>0.000002</mu1>
+    <mu2>0.000002</mu2>
+    <material>Gazebo/Black</material>
+</gazebo>
+
+<gazebo reference="right_ear_link">
+    <mu1>0.000002</mu1>
+    <mu2>0.000002</mu2>
+    <material>Gazebo/Black</material>
+</gazebo>
+
 
 
 <!-- Controller for the differential drive robot -->

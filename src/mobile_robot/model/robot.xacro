@@ -101,6 +101,59 @@
     </inertial>
 </xacro:macro>
 
+<!-- ###########################################################    -->
+<!--     Aesthetic top ball (with collision)                        -->
+<!-- ###########################################################    -->
+
+<!-- Ball radius -->
+<xacro:property name="r_ball" value="0.2"/>
+
+<!-- Ball material density (reuse d3 or make a new one) -->
+<xacro:property name="d_ball" value="${d3}"/>
+
+<!-- Ball mass (solid sphere) -->
+<xacro:property name="m_ball" value="${d_ball*(4.0/3.0)*pi_const*r_ball*r_ball*r_ball}"/>
+
+<!-- Ball inertia (solid sphere): I = 2/5 m r^2 -->
+<xacro:property name="I_ball" value="${(2.0/5.0)*m_ball*r_ball*r_ball}"/>
+
+<xacro:macro name="inertia_ball">
+  <inertial>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <mass value="${m_ball}"/>
+    <inertia ixx="${I_ball}" ixy="0.0" ixz="0.0"
+             iyy="${I_ball}" iyz="0.0"
+             izz="${I_ball}" />
+  </inertial>
+</xacro:macro>
+
+<!-- ###########################################################    -->
+<!--     Aesthetic Ear                     -->
+<!-- ###########################################################    -->
+
+<!-- Ear radius -->
+<xacro:property name="r_ear" value="0.1333"/>
+
+<!-- Ear material density (reuse d3 or make a new one) -->
+<xacro:property name="d_ear" value="${d3}"/>
+
+<!-- Ear mass (solid sphere) -->
+<xacro:property name="m_ear" value="${d_ear*(4.0/3.0)*pi_const*r_ear*r_ear*r_ear}"/>
+
+<!-- Ear inertia (solid sphere): I = 2/5 m r^2 -->
+<xacro:property name="I_ear" value="${(2.0/5.0)*m_ear*r_ear*r_ear}"/>
+
+<xacro:macro name="inertia_ear">
+  <inertial>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <mass value="${m_ear}"/>
+    <inertia ixx="${I_ear}" ixy="0.0" ixz="0.0"
+             iyy="${I_ear}" iyz="0.0"
+             izz="${I_ear}" />
+  </inertial>
+</xacro:macro>
+
+
 <!-- ###########################################################   -->
 
 <!-- ###########################################################   -->
@@ -267,5 +320,103 @@
 <!-- ###########################################################   -->
 <!-- END: Caster wheel -->
 <!-- ###########################################################   -->
+
+<!-- ###########################################################   -->
+<!-- START: Ball on top of chassis (visual + collision)            -->
+<!-- ###########################################################   -->
+
+<joint name="top_ball_joint" type="fixed">
+  <parent link="body_link"/>
+  <child link="top_ball_link"/>
+  <!-- Top of chassis is at z = s1 + b/2, then add the ball radius -->
+  <origin xyz="0 0 ${s1 + b/2 + r_ball}" rpy="0 0 0"/>
+</joint>
+
+<link name="top_ball_link">
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <sphere radius="${r_ball}"/>
+    </geometry>
+  </visual>
+
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <sphere radius="${r_ball}"/>
+    </geometry>
+  </collision>
+
+  <xacro:inertia_ball />
+</link>
+
+<!-- ###########################################################   -->
+<!-- END: Ball on top of chassis                                   -->
+<!-- ###########################################################   -->
+
+<!-- ###########################################################   -->
+<!-- START: Left Ear (visual + collision)            -->
+<!-- ###########################################################   -->
+
+<joint name="left_ear_joint" type="fixed">
+  <parent link="top_ball_link"/>
+  <child link="left_ear_link"/>
+  <origin xyz="0 ${r_ball*0.7071 + r_ear*0.5} ${r_ball*0.7071 + r_ear*0.5}" rpy="0 0 0"/>
+</joint>
+
+<link name="left_ear_link">
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <sphere radius="${r_ear}"/>
+    </geometry>
+  </visual>
+
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <sphere radius="${r_ear}"/>
+    </geometry>
+  </collision>
+
+  <xacro:inertia_ear />
+</link>
+
+<!-- ###########################################################   -->
+<!-- END: Left Ear (visual + collision)                                   -->
+<!-- ###########################################################   -->
+
+<!-- ###########################################################   -->
+<!-- START: Right Ear (visual + collision)            -->
+<!-- ###########################################################   -->
+
+<joint name="right_ear_joint" type="fixed">
+  <parent link="top_ball_link"/>
+  <child link="right_ear_link"/>
+  <origin xyz="0 ${-r_ball*0.7071 - r_ear*0.5} ${r_ball*0.7071 + r_ear*0.5}" rpy="0 0 0"/>
+</joint>
+
+<link name="right_ear_link">
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <sphere radius="${r_ear}"/>
+    </geometry>
+  </visual>
+
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <sphere radius="${r_ear}"/>
+    </geometry>
+  </collision>
+
+  <xacro:inertia_ear />
+</link>
+
+<!-- ###########################################################   -->
+<!-- END: Right Ear (visual + collision)                                   -->
+<!-- ###########################################################   -->
+
 
 </robot>
