@@ -1,0 +1,21 @@
+[2.927s] Invoking command in '/home/russe/Autonomous_Robot/src/mobile_robot': PYTHONPATH=/home/russe/Autonomous_Robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mobile_robot build --build-base /home/russe/Autonomous_Robot/build/mobile_robot/build install --record /home/russe/Autonomous_Robot/build/mobile_robot/install.log --single-version-externally-managed install_data
+[3.815s] running egg_info
+[3.877s] writing ../../build/mobile_robot/mobile_robot.egg-info/PKG-INFO
+[3.878s] writing dependency_links to ../../build/mobile_robot/mobile_robot.egg-info/dependency_links.txt
+[3.878s] writing entry points to ../../build/mobile_robot/mobile_robot.egg-info/entry_points.txt
+[3.879s] writing requirements to ../../build/mobile_robot/mobile_robot.egg-info/requires.txt
+[3.879s] writing top-level names to ../../build/mobile_robot/mobile_robot.egg-info/top_level.txt
+[4.017s] reading manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[4.017s] writing manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[4.017s] running build
+[4.017s] running build_py
+[4.020s] running install
+[4.041s] running install_lib
+[4.109s] running install_data
+[4.111s] running install_egg_info
+[4.191s] removing '/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info' (and everything under it)
+[4.191s] Copying ../../build/mobile_robot/mobile_robot.egg-info to /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info
+[4.192s] running install_scripts
+[4.631s] Installing test_publisher script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[4.636s] writing list of installed files to '/home/russe/Autonomous_Robot/build/mobile_robot/install.log'
+[4.732s] Invoked command in '/home/russe/Autonomous_Robot/src/mobile_robot' returned '0': PYTHONPATH=/home/russe/Autonomous_Robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mobile_robot build --build-base /home/russe/Autonomous_Robot/build/mobile_robot/build install --record /home/russe/Autonomous_Robot/build/mobile_robot/install.log --single-version-externally-managed install_data

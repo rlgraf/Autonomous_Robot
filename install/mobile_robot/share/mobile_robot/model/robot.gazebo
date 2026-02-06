@@ -31,7 +31,7 @@
 <gazebo reference="caster_link">
     <mu1>0.000002</mu1>
     <mu2>0.000002</mu2>
-    <material>Gazebo/Blue</material>
+    <material>Gazebo/Yellow</material>
 </gazebo>
 
 <gazebo reference="top_ball_link">
