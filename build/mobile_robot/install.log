@@ -1,10 +1,13 @@
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/test.py
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__init__.py
+/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/simple_avoid_obstacle.py
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__pycache__/test.cpython-312.pyc
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__pycache__/__init__.cpython-312.pyc
+/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__pycache__/simple_avoid_obstacle.cpython-312.pyc
 /home/russe/Autonomous_Robot/install/mobile_robot/share/ament_index/resource_index/packages/mobile_robot
 /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/package.xml
 /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/launch/gazebo_model.launch.py
+/home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/launch/simple_avoid_obstacle.launch.py
 /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/model/robot.xacro
 /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/model/robot.gazebo
 /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/parameters/bridge_parameters.yaml
@@ -15,4 +18,5 @@
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info/top_level.txt
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info/zip-safe
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info/requires.txt
+/home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/simple_avoid_obstacle
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/test_publisher

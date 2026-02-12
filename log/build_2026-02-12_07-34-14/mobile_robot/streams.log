@@ -1,0 +1,26 @@
+[3.285s] Invoking command in '/home/russe/Autonomous_Robot/src/mobile_robot': PYTHONPATH=/home/russe/Autonomous_Robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mobile_robot build --build-base /home/russe/Autonomous_Robot/build/mobile_robot/build install --record /home/russe/Autonomous_Robot/build/mobile_robot/install.log --single-version-externally-managed install_data
+[3.852s] running egg_info
+[3.896s] writing ../../build/mobile_robot/mobile_robot.egg-info/PKG-INFO
+[3.896s] writing dependency_links to ../../build/mobile_robot/mobile_robot.egg-info/dependency_links.txt
+[3.904s] writing entry points to ../../build/mobile_robot/mobile_robot.egg-info/entry_points.txt
+[3.904s] writing requirements to ../../build/mobile_robot/mobile_robot.egg-info/requires.txt
+[3.904s] writing top-level names to ../../build/mobile_robot/mobile_robot.egg-info/top_level.txt
+[4.007s] reading manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[4.010s] writing manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[4.012s] running build
+[4.012s] running build_py
+[4.012s] copying mobile_robot/simple_avoid_obstacle.py -> /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot
+[4.013s] running install
+[4.027s] running install_lib
+[4.089s] copying /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot/simple_avoid_obstacle.py -> /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+[4.089s] byte-compiling /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/simple_avoid_obstacle.py to simple_avoid_obstacle.cpython-312.pyc
+[4.091s] running install_data
+[4.092s] copying model/robot.gazebo -> /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/model
+[4.093s] running install_egg_info
+[4.148s] removing '/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info' (and everything under it)
+[4.150s] Copying ../../build/mobile_robot/mobile_robot.egg-info to /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info
+[4.153s] running install_scripts
+[4.453s] Installing simple_avoid_obstacle script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[4.456s] Installing test_publisher script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[4.456s] writing list of installed files to '/home/russe/Autonomous_Robot/build/mobile_robot/install.log'
+[4.523s] Invoked command in '/home/russe/Autonomous_Robot/src/mobile_robot' returned '0': PYTHONPATH=/home/russe/Autonomous_Robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mobile_robot build --build-base /home/russe/Autonomous_Robot/build/mobile_robot/build install --record /home/russe/Autonomous_Robot/build/mobile_robot/install.log --single-version-externally-managed install_data

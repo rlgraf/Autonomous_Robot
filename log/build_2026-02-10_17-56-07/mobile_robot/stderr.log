@@ -1,0 +1,5 @@
+  File "/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/simple_avoid_obstacle.py", line 70
+    return
+    ^^^^^^
+SyntaxError: 'return' outside function
+
