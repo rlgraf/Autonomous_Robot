@@ -30,7 +30,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-        'test_publisher = mobile_robot.test:main'
+        'test_publisher = mobile_robot.test:main',
+        'battery_node = mobile_robot.battery_node:main',
         ],
     },
 )

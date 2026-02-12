@@ -10,6 +10,7 @@ setup.py
 ../../build/mobile_robot/mobile_robot.egg-info/zip-safe
 launch/gazebo_model.launch.py
 mobile_robot/__init__.py
+mobile_robot/battery_node.py
 mobile_robot/test.py
 model/robot.gazebo
 model/robot.xacro

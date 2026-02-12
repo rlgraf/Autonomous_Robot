@@ -8,14 +8,18 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, TimerAction, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
+from launch.actions import RegisterEventHandler
+from launch.event_handlers import OnProcessStart, OnProcessExit
 from launch_ros.actions import Node
 import xacro
 
 
 def generate_launch_description():
+    # set_qt_platform = SetEnvironmentVariable('QT_QPA_PLATFORM', 'xcb')
+    # set_render_engine = SetEnvironmentVariable('GZ_RENDER_ENGINE_NAME', 'ogre')
 
     # this name has to match the robor name in the Xacro file
     robotXacroName='differential_drive_robot'
@@ -55,10 +59,15 @@ def generate_launch_description():
     # gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch, launch_arguments={'gz_args': ['-r -v -v4 ', pathWorldFile], 'on_exit_shutdown': 'true'}.items())
     
     # this is if you are using an empty world model
+    # gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch,
+    #                                       launch_arguments={'gz_args': '-r empty.sdf',
+    #                                                         'on_exit_shutdown': 'true'}.items())                                                
+    # AFTER
     gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch,
-                                          launch_arguments={'gz_args': ['-r -v -v4 empty.sdf'],
-                                                            'on_exit_shutdown': 'true'}.items())                                                
-
+                                          launch_arguments={
+                                            'gz_args': '-r -v -v4 default.sdf',
+                                            'on_exit_shutdown': 'true'
+                                        }.items())
 
     # Gazebo node
     spawnModelNodeGazebo = Node(
@@ -99,15 +108,57 @@ def generate_launch_description():
     output='screen',
     )
 
-    # here we create an empty launch description object
-    launchDescriptionObject = LaunchDescription()
+    # # here we create an empty launch description object
+    # launchDescriptionObject = LaunchDescription()
+    # launchDescriptionObject.add_action(SetEnvironmentVariable('QT_QPA_PLATFORM','xcb'))
 
-    # we add gazeboLaunch
-    launchDescriptionObject.add_action(gazeboLaunch)
+    # # we add gazeboLaunch
+    # # launchDescriptionObject.add_action(set_qt_platform)
+    # # launchDescriptionObject.add_action(set_render_engine)
+    # launchDescriptionObject.add_action(gazeboLaunch)
+    # launchDescriptionObject.add_action(nodeRobotStatePublisher)
 
-    # we add the two nodes
-    launchDescriptionObject.add_action(spawnModelNodeGazebo)
-    launchDescriptionObject.add_action(nodeRobotStatePublisher)
-    launchDescriptionObject.add_action(start_gazebo_ros_bridge_cmd)
 
-    return launchDescriptionObject
+    # # we add the two nodes
+    # launchDescriptionObject.add_action(
+    #     TimerAction(
+    #         period=5.0,
+    #         actions = [spawnModelNodeGazebo]
+    #         )
+    # )
+    # launchDescriptionObject.add_action(
+    #     TimerAction(
+    #         period=6.0,
+    #         actions = [start_gazebo_ros_bridge_cmd]
+    #         )
+    # )
+    
+    # # launchDescriptionObject.add_action(start_gazebo_ros_bridge_cmd)
+
+    # return launchDescriptionObject
+
+
+        # ------------------------------------------------------------------ #
+    # Launch description                                                   #
+    # Spawn is delayed 5s to give Gazebo time to fully initialize         #
+    # ------------------------------------------------------------------ #
+    return LaunchDescription([
+        # Environment must be set before Gazebo launches
+        # SetEnvironmentVariable('QT_QPA_PLATFORM', 'xcb'),
+
+        # Start Gazebo and robot state publisher immediately
+        gazeboLaunch,
+        nodeRobotStatePublisher,
+
+        # Wait 5 seconds then spawn the robot
+        TimerAction(
+            period=10.0,
+            actions=[spawnModelNodeGazebo]
+        ),
+
+        # Wait 6 seconds then start the bridge (after spawn)
+        TimerAction(
+            period=15.0,
+            actions=[start_gazebo_ros_bridge_cmd]
+        ),
+    ])
