@@ -9,11 +9,12 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist
 import math
 
 # --- Tunable parameters ---
 BATTERY_CAPACITY_AH   = 1.0   # Total capacity in Ah
-IDLE_DRAIN_A          = 0.25 # Idle current draw in A (2W / 12V)
+IDLE_DRAIN_A          = 1 # Idle current draw in A (2W / 12V)
 MOVE_DRAIN_PER_MS     = 10    # Extra current per m/s of linear speed (A)
 TURN_DRAIN_PER_RADS   = 5    # Extra current per rad/s of angular speed (A)
 BATTERY_VOLTAGE       = 12.0   # Nominal voltage in V
@@ -49,6 +50,7 @@ class BatteryNode(Node):
 
         # Publish our computed battery state
         self._pub = self.create_publisher(BatteryState, 'battery_status', 10)
+        self._cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 1)
 
         # Timer to update and publish at fixed rate
         self.create_timer(1.0 / PUBLISH_RATE_HZ, self._update_battery)
@@ -101,7 +103,6 @@ class BatteryNode(Node):
         msg.capacity        = BATTERY_CAPACITY_AH
         # msg.design_capacity = BATTERY_CAPACITY_AH
         msg.percentage      = percentage
-        # msg.linear_vel      = self._linear_vel
         # msg.power_supply_status   = BatteryState.POWER_SUPPLY_STATUS_DISCHARGING
         # msg.power_supply_health   = BatteryState.POWER_SUPPLY_HEALTH_GOOD
         # msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LION
@@ -109,13 +110,23 @@ class BatteryNode(Node):
 
         self._pub.publish(msg)
 
+                # Stop robot when battery is depleted
+        if percentage <= 0.0:
+            self._cmd_vel_pub.publish(Twist())   # all zeros = full stop
+            self.get_logger().error(
+                'Battery depleted — robot stopped!',
+                throttle_duration_sec=5.0
+            )
+
         # Warn at low battery
-        if percentage < 0.2:
+        elif percentage < 0.2:
             self.get_logger().warn(
                 f'Low battery: {percentage*100:.1f}% | '
                 f'{self._charge_ah:.3f} Ah remaining',
                 throttle_duration_sec=10.0
             )
+
+        
 
 def main(args=None):
     rclpy.init(args=args)
