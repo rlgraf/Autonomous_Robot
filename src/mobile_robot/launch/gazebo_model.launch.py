@@ -30,7 +30,7 @@ def generate_launch_description():
     # uncomment this if you want to define your own empty world model
     # however, then you have to create empty_world.world
     # this is a relative path to the Gazebo world file
-    # worldFileRelativePath = 'model/empty_world.world'
+    worldFileRelativePath = 'worlds/arena.sdf'
 
     # this is the absolute path to the model
     pathModelFile = os.path.join(get_package_share_directory(namePackage),
@@ -48,16 +48,18 @@ def generate_launch_description():
     gazebo_rosPackageLaunch=PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ros_gz_sim'),
                                                                         'launch', 'gz_sim.launch.py'))
     
+    worldFileRelativePath = 'worlds/arena.sdf'
+    pathWorldFile = os.path.join(get_package_share_directory(namePackage),worldFileRelativePath)
     
     # this is the launch description
     
     # this is if you are using your own world model
-    # gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch, launch_arguments={'gz_args': ['-r -v -v4 ', pathWorldFile], 'on_exit_shutdown': 'true'}.items())
+    gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch, launch_arguments={'gz_args': ['-r -v -v4 ', pathWorldFile], 'on_exit_shutdown': 'true'}.items())
     
     # this is if you are using an empty world model
-    gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch,
-                                          launch_arguments={'gz_args': ['-r -v -v4 empty.sdf'],
-                                                            'on_exit_shutdown': 'true'}.items())                                                
+    #gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch,
+    #                                      launch_arguments={'gz_args': ['-r -v -v4 empty.sdf'],
+    #                                                        'on_exit_shutdown': 'true'}.items())                                                
 
 
     # Gazebo node

@@ -16,6 +16,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*')),
         (os.path.join('share', package_name, 'model'), glob('model/*')),
         (os.path.join('share', package_name, 'parameters'), glob('parameters/*')),
+        (os.path.join('share', package_name, 'worlds'), glob('worlds/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -31,7 +32,9 @@ setup(
     entry_points={
         'console_scripts': [
         'test_publisher = mobile_robot.test:main',
-        'simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main'
+        'simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main',
+        'battery_node = mobile_robot.battery_node:main',
+        'spin_head = mobile_robot.spin_head:main',
         ],
     },
 )
