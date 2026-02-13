@@ -9,8 +9,10 @@ setup.py
 ../../build/mobile_robot/mobile_robot.egg-info/top_level.txt
 ../../build/mobile_robot/mobile_robot.egg-info/zip-safe
 launch/gazebo_model.launch.py
+launch/simple_avoid_obstacle.launch.py
 mobile_robot/__init__.py
 mobile_robot/battery_node.py
+mobile_robot/simple_avoid_obstacle.py
 mobile_robot/test.py
 model/robot.gazebo
 model/robot.xacro
