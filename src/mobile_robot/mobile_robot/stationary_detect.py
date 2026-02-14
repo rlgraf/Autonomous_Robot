@@ -55,8 +55,8 @@ class StationaryObjectDetector(Node):
         self.declare_parameter("min_cluster_points", 6)
 
         # "Not a wall" heuristics
-        self.declare_parameter("wall_width_max_m", 0.80)     # clusters wider than this are treated as wall-like
-        self.declare_parameter("wall_angle_span_max_deg", 35.0)  # clusters spanning too much angle are wall-like
+        self.declare_parameter("wall_width_max_m", 1.80)     # clusters wider than this are treated as wall-like
+        self.declare_parameter("wall_angle_span_max_deg", 55.0)  # clusters spanning too much angle are wall-like
 
         # Stationary check
         self.declare_parameter("stationary_required_sec", 1.0)

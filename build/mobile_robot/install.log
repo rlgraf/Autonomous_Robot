@@ -30,4 +30,5 @@
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/battery_node
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/simple_avoid_obstacle
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/spin_head
+/home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/stationary_detect
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/test_publisher

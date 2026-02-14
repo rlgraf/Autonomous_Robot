@@ -35,6 +35,7 @@ setup(
         'simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main',
         'battery_node = mobile_robot.battery_node:main',
         'spin_head = mobile_robot.spin_head:main',
+        'stationary_detect = mobile_robot.stationary_detect:main'
         ],
     },
 )
