@@ -14,6 +14,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import RegisterEventHandler
 from launch.event_handlers import OnProcessStart, OnProcessExit
 from launch_ros.actions import Node
+import yaml
 import xacro
 
 
@@ -108,17 +109,76 @@ def generate_launch_description():
     output='screen',
     )
 
+
+    params_battery_file = os.path.join(
+        get_package_share_directory(namePackage),
+        'parameters', 'battery_tunable_parameters.yaml'
+    )
+    with open(params_battery_file, 'r') as f:
+        battery_params = yaml.safe_load(f)
+    charging_stations = [
+        tuple(s) for s in battery_params['battery_node']['ros__parameters']['charging_stations']
+    ]
+
+    start_battery_cmd = Node(
+        package='mobile_robot',
+        executable='battery_node',
+        name='battery_node',
+        output='screen',
+        parameters=[params_battery_file],   # loads everything automatically
+    )
+
+    # radius comes straight from the YAML
+    charging_radius = battery_params['battery_node']['ros__parameters']['charging_radius']
+
+    spawn_station_nodes = []
+    for i, (sx, sy) in enumerate(charging_stations):
+        sdf_string = f"""<?xml version="1.0"?>
+    <sdf version="1.8">
+        <model name="charging_station_{i}">
+            <static>true</static>
+            <link name="pad_link">
+                <visual name="pad_visual">
+                    <geometry>
+                        <cylinder>
+                            <radius>{charging_radius}</radius>
+                            <length>0.02</length>
+                        </cylinder>
+                    </geometry>
+                    <material>
+                        <ambient>0 0.8 0 1</ambient>
+                        <diffuse>0 0.8 0 1</diffuse>
+                        <specular>0 0.1 0 1</specular>
+                    </material>
+                </visual>
+            </link>
+        </model>
+    </sdf>"""
+
+        spawn_station_nodes.append(
+            Node(
+                package='ros_gz_sim',
+                executable='create',
+                arguments=[
+                    '-string', sdf_string,
+                    '-name', f'charging_station_{i}',
+                    '-x', str(sx),
+                    '-y', str(sy),
+                    '-z', '0.01',
+                ],
+                output='screen'
+            )
+            
+        )
+    
     # # here we create an empty launch description object
     # launchDescriptionObject = LaunchDescription()
     # launchDescriptionObject.add_action(SetEnvironmentVariable('QT_QPA_PLATFORM','xcb'))
-
     # # we add gazeboLaunch
     # # launchDescriptionObject.add_action(set_qt_platform)
     # # launchDescriptionObject.add_action(set_render_engine)
     # launchDescriptionObject.add_action(gazeboLaunch)
     # launchDescriptionObject.add_action(nodeRobotStatePublisher)
-
-
     # # we add the two nodes
     # launchDescriptionObject.add_action(
     #     TimerAction(
@@ -131,12 +191,9 @@ def generate_launch_description():
     #         period=6.0,
     #         actions = [start_gazebo_ros_bridge_cmd]
     #         )
-    # )
-    
+    # )   
     # # launchDescriptionObject.add_action(start_gazebo_ros_bridge_cmd)
-
     # return launchDescriptionObject
-
 
         # ------------------------------------------------------------------ #
     # Launch description                                                   #
@@ -145,20 +202,29 @@ def generate_launch_description():
     return LaunchDescription([
         # Environment must be set before Gazebo launches
         # SetEnvironmentVariable('QT_QPA_PLATFORM', 'xcb'),
-
+        
         # Start Gazebo and robot state publisher immediately
         gazeboLaunch,
         nodeRobotStatePublisher,
 
         # Wait 5 seconds then spawn the robot
         TimerAction(
-            period=10.0,
+            period=5.0,           
             actions=[spawnModelNodeGazebo]
         ),
-
+        
         # Wait 6 seconds then start the bridge (after spawn)
         TimerAction(
-            period=15.0,
+            period=6.0,
             actions=[start_gazebo_ros_bridge_cmd]
         ),
+        TimerAction(
+            period=7.0,   # just after bridge at 15s
+            actions=[start_battery_cmd]
+        ),
+        TimerAction(
+            period=8.0,  # stagger spawn of recharge stations
+            actions=[*spawn_station_nodes]
+        ),
+
     ])

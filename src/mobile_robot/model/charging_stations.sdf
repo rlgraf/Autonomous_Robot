@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="charging_station_STATION_ID">
+    <static>true</static>
+    <link name="pad_link">
+      <visual name="pad_visual">
+        <geometry>
+          <!-- cylinder used flat as a disc: radius matches CHARGING_RADIUS (0.5 m) -->
+          <cylinder>
+            <radius>0.5</radius>
+            <length>0.02</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0 0.8 0 1</ambient>
+          <diffuse>0 0.8 0 1</diffuse>
+          <specular>0 0.1 0 1</specular>
+        </material>
+      </visual>
+      <!-- no collision — visual only -->
+    </link>
+  </model>
+</sdf>

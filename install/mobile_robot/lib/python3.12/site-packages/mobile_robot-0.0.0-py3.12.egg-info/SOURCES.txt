@@ -14,8 +14,10 @@ mobile_robot/__init__.py
 mobile_robot/battery_node.py
 mobile_robot/simple_avoid_obstacle.py
 mobile_robot/test.py
+model/charging_stations.sdf
 model/robot.gazebo
 model/robot.xacro
+parameters/battery_tunable_parameters.yaml
 parameters/bridge_parameters.yaml
 resource/mobile_robot
 test/test_copyright.py

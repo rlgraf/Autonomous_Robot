@@ -10,9 +10,11 @@
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/share/mobile_robot/package.xml
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/share/mobile_robot/launch/gazebo_model.launch.py
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/share/mobile_robot/launch/simple_avoid_obstacle.launch.py
+/home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/share/mobile_robot/model/charging_stations.sdf
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/share/mobile_robot/model/robot.xacro
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/share/mobile_robot/model/robot.gazebo
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/share/mobile_robot/parameters/bridge_parameters.yaml
+/home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/share/mobile_robot/parameters/battery_tunable_parameters.yaml
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info/zip-safe
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info/PKG-INFO
 /home/benoitrouchy/Autonomous_Robot-master/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info/dependency_links.txt
