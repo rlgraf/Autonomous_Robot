@@ -1,0 +1,20 @@
+battery_node:
+  ros__parameters:
+    # Battery
+    battery_capacity_ah: 1.0
+    idle_drain_a: 1.0
+    move_drain_per_ms: 10.0
+    turn_drain_per_rads: 5.0
+    battery_voltage: 12.0
+    publish_rate_hz: 10.0
+
+    # Charging
+    charge_rate_a: 2.0
+    charging_radius: 0.5
+    stationary_thresh: 0.05
+
+    # Charging station positions [[x1,y1], [x2,y2], ...]
+    charging_stations:
+      - [0.0, 0.0]
+      - [5.0, 3.0]
+      - [-20.0, -20.0]

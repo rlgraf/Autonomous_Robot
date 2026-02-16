@@ -119,6 +119,7 @@
         <pose relative_to='lidar_link'>0 0 0 0 0 0</pose>
 
         <topic>scan</topic>
+        <frame_id>lidar_link</frame_id>
         <update_rate>50</update_rate>
 
         <lidar>

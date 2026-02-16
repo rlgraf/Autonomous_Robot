@@ -21,7 +21,7 @@ def generate_launch_description():
     )
 
     # Generator script inside your package share
-    genScriptRelPath = 'worlds/arena_with_cylinders.py'
+    genScriptRelPath = 'worlds/arena_moving_cylinder.py'
     pathGenScript = os.path.join(get_package_share_directory(namePackage), genScriptRelPath)
 
     # Output world in a writable location

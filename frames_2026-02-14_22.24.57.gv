@@ -1,0 +1,16 @@
+digraph G {
+"odom" -> "base_footprint"[label=" Broadcaster: default_authority\nAverage rate: 50.331\nBuffer length: 3.02\nMost recent transform: 137.78\nOldest transform: 134.76\n"];
+"lidar_link" -> "differential_drive_robot/base_footprint/gpu_lidar"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"body_link" -> "lidar_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_footprint" -> "body_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"body_link" -> "caster_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"top_ball_link" -> "left_ear_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"body_link" -> "top_ball_link"[label=" Broadcaster: default_authority\nAverage rate: 20.327\nBuffer length: 3.001\nMost recent transform: 137.782\nOldest transform: 134.781\n"];
+"top_ball_link" -> "right_ear_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"body_link" -> "wheel1_link"[label=" Broadcaster: default_authority\nAverage rate: 20.327\nBuffer length: 3.001\nMost recent transform: 137.782\nOldest transform: 134.781\n"];
+"body_link" -> "wheel2_link"[label=" Broadcaster: default_authority\nAverage rate: 20.327\nBuffer length: 3.001\nMost recent transform: 137.782\nOldest transform: 134.781\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1771136697.1294806"[ shape=plaintext ] ;
+}->"odom";
+}
