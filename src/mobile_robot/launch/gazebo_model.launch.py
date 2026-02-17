@@ -131,29 +131,40 @@ def generate_launch_description():
     # radius comes straight from the YAML
     charging_radius = battery_params['battery_node']['ros__parameters']['charging_radius']
 
+        # ── Load charging-station SDF template from model file ─────────────── #
+    station_sdf_template_path = os.path.join(
+        get_package_share_directory(namePackage),
+        'model', 'charging_stations.sdf'
+    )
+    with open(station_sdf_template_path, 'r') as f:
+        station_sdf_template = f.read()
+
     spawn_station_nodes = []
     for i, (sx, sy) in enumerate(charging_stations):
-        sdf_string = f"""<?xml version="1.0"?>
-    <sdf version="1.8">
-        <model name="charging_station_{i}">
-            <static>true</static>
-            <link name="pad_link">
-                <visual name="pad_visual">
-                    <geometry>
-                        <cylinder>
-                            <radius>{charging_radius}</radius>
-                            <length>0.02</length>
-                        </cylinder>
-                    </geometry>
-                    <material>
-                        <ambient>0 0.8 0 1</ambient>
-                        <diffuse>0 0.8 0 1</diffuse>
-                        <specular>0 0.1 0 1</specular>
-                    </material>
-                </visual>
-            </link>
-        </model>
-    </sdf>"""
+        sdf_string = (station_sdf_template
+                      .replace('STATION_ID',    str(i))
+                      .replace('STATION_RADIUS',str(charging_radius)))
+    #     sdf_string = f"""<?xml version="1.0"?>
+    # <sdf version="1.8">
+    #     <model name="charging_station_{i}">
+    #         <static>true</static>
+    #         <link name="pad_link">
+    #             <visual name="pad_visual">
+    #                 <geometry>
+    #                     <cylinder>
+    #                         <radius>{charging_radius}</radius>
+    #                         <length>0.02</length>
+    #                     </cylinder>
+    #                 </geometry>
+    #                 <material>
+    #                     <ambient>0 0.8 0 1</ambient>
+    #                     <diffuse>0 0.8 0 1</diffuse>
+    #                     <specular>0 0.1 0 1</specular>
+    #                 </material>
+    #             </visual>
+    #         </link>
+    #     </model>
+    # </sdf>"""
 
         spawn_station_nodes.append(
             Node(

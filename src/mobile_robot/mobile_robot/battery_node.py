@@ -12,6 +12,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 import yaml
 from ament_index_python.packages import get_package_share_directory
+import subprocess
 import os
 import math
 
@@ -54,9 +55,27 @@ class BatteryNode(Node):
         )
         with open(params_file, 'r') as f:
             raw = yaml.safe_load(f)
+        ros_params = raw['battery_node']['ros__parameters']
+
         self._stations = [
-            tuple(s) for s in raw['battery_node']['ros__parameters']['charging_stations']
+            tuple(s) for s in ros_params['charging_stations']
         ]
+
+                # Load station colors from YAML
+        # Each color is a dict with ambient, diffuse, emissive — each a [r,g,b,a] list
+        self._colors = {
+            'idle':     ros_params['color_idle'],
+            'charging': ros_params['color_charging'],
+            'full':     ros_params['color_full'],
+        }
+
+        # Track current visual state per station to avoid redundant marker publishes
+        self._station_states = [None] * len(self._stations)
+
+        # Look up visual/parent IDs from Gazebo scene at startup
+        # Small delay to ensure stations are spawned before we query
+        self._station_ids = {}   # idx -> (visual_id, parent_id)
+        self._init_timer = self.create_timer(0.0, self._lookup_station_ids)
 
         # State
         self._charge_ah       = self._capacity  # current charge in Ah
@@ -127,6 +146,124 @@ class BatteryNode(Node):
         """True if the robot is not meaningfully moving."""
         speed = math.sqrt(self._linear_vel ** 2 + self._angular_vel ** 2)
         return speed < self._stat_thresh
+    
+    def _lookup_station_ids(self):
+        """Query Gazebo scene once to get visual and parent IDs for each station."""
+        try:
+            result = subprocess.run(
+                ['gz', 'service',
+                 '-s', '/world/default/scene/info',
+                 '--reqtype', 'gz.msgs.Empty',
+                 '--reptype', 'gz.msgs.Scene',
+                 '--timeout', '2000',
+                 '--req', ''],
+                capture_output=True, text=True, timeout=5.0
+            )
+            scene_text = result.stdout
+
+            for i in range(len(self._stations)):
+                name = f'charging_station_{i}'
+                # Find the block for this station
+                start = scene_text.find(f'name: "{name}"')
+                if start == -1:
+                    self.get_logger().warn(f'Could not find {name} in scene')
+                    continue
+                block = scene_text[start:start + 500]
+
+                # Extract visual id and parent_id from the visual block
+                visual_start = block.find('visual {')
+                if visual_start == -1:
+                    continue
+                visual_block = block[visual_start:visual_start + 200]
+
+                visual_id  = self._parse_id(visual_block, 'id:')
+                parent_id  = self._parse_id(visual_block, 'parent_id:')
+
+                if visual_id and parent_id:
+                    self._station_ids[i] = (visual_id, parent_id)
+                    self.get_logger().info(
+                        f'Station {i}: visual_id={visual_id} parent_id={parent_id}'
+                    )
+
+        except Exception as e:
+            self.get_logger().warn(f'Failed to look up station IDs: {e}')
+
+        # One-shot — cancel after first run
+        self._init_timer.cancel()
+
+        # Now publish initial idle colors for all stations
+        for i, (sx, sy) in enumerate(self._stations):
+            self._set_station_color(i, 'idle')
+
+    def _parse_id(self, text: str, field: str) -> int | None:
+        """Extract an integer ID field from a protobuf text block."""
+        idx = text.find(field)
+        if idx == -1:
+            return None
+        after = text[idx + len(field):].strip()
+        token = after.split()[0]
+        try:
+            return int(token)
+        except ValueError:
+            return None
+    
+
+    # ── Charging station color management ──────────────────────────────── #
+    def _update_station_colors(self):
+        """Determine correct color state for each station and publish markers."""
+        for i, (sx, sy) in enumerate(self._stations):
+            dist = math.sqrt((self._pos_x - sx)**2 + (self._pos_y - sy)**2)
+            at_this = dist <= self._chg_radius
+            full       = self._charge_ah >= self._capacity
+
+            if at_this and self._charging:
+                new_state = 'charging'
+            elif at_this and self._charge_ah >= self._capacity*0.95:
+                new_state = 'full'
+            else:
+                new_state = 'idle'
+
+            if new_state != self._station_states[i]:
+                self._station_states[i] = new_state
+                self._set_station_color(i, new_state)
+
+    def _set_station_color(self, idx: int, state: str):
+        """Call /world/default/visual_config to change the pad color in-place."""
+        if idx not in self._station_ids:
+            self.get_logger().warn(
+                f'No IDs for station {idx} yet — skipping color update', once=True
+            )
+            return
+
+        visual_id, parent_id = self._station_ids[idx]
+        col = self._colors[state]
+        am  = col['ambient']
+        di  = col['diffuse']
+        sp  = col['specular']
+
+        req = (
+            f'id: {visual_id} '
+            f'parent_id: {parent_id} '
+            f'material {{ '
+            f'  ambient  {{ r: {am[0]} g: {am[1]} b: {am[2]} a: {am[3]} }} '
+            f'  diffuse  {{ r: {di[0]} g: {di[1]} b: {di[2]} a: {di[3]} }} '
+            f'  specular {{ r: {sp[0]} g: {sp[1]} b: {sp[2]} a: {sp[3]} }} '
+            f'}}'
+        )
+        try:
+            subprocess.run(
+                ['gz', 'service',
+                 '-s', '/world/default/visual_config',
+                 '--reqtype', 'gz.msgs.Visual',
+                 '--reptype', 'gz.msgs.Boolean',
+                 '--timeout', '2000',
+                 '--req', req],
+                timeout=3.0, capture_output=True
+            )
+        except Exception as e:
+            self.get_logger().warn(
+                f'visual_config call failed: {e}', throttle_duration_sec=10.0
+            )
     
 
     # --- Main Loop --#
@@ -214,6 +351,10 @@ class BatteryNode(Node):
         # msg.power_supply_health   = BatteryState.POWER_SUPPLY_HEALTH_GOOD
         # msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LION
         msg.present         = True
+
+
+        # Update charging station visual colors
+        self._update_station_colors()
 
         self._pub.publish(msg)
 
