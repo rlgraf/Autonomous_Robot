@@ -1,0 +1,5 @@
+  File "/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/simple_guest_find.py", line 254
+    return best
+    ^^^^^^^^^^^
+SyntaxError: 'return' outside function
+

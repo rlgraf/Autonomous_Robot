@@ -17,21 +17,21 @@
 </gazebo>
 
 <gazebo reference="wheel1_link">
-    <mu1>0.2</mu1>
-    <mu2>0.2</mu2>
+    <mu1>2.0</mu1>
+    <mu2>2.0</mu2>
     <material>Gazebo/Yellow</material>
 </gazebo>
 
 <gazebo reference="wheel2_link">
-    <mu1>0.2</mu1>
-    <mu2>0.2</mu2>
+    <mu1>2.0</mu1>
+    <mu2>2.0</mu2>
     <material>Gazebo/Yellow</material>
 </gazebo>
 
 <gazebo reference="caster_link">
-    <mu1>0.000002</mu1>
-    <mu2>0.000002</mu2>
-    <material>Gazebo/Yellow</material>
+  <mu1>0.8</mu1>
+  <mu2>0.8</mu2>
+  <material>Gazebo/Yellow</material>
 </gazebo>
 
 <gazebo reference="top_ball_link">
@@ -74,6 +74,8 @@
 
     <!-- limits -->
         <max_linear_acceleration>10</max_linear_acceleration>
+        <max_angular_acceleration>10</max_angular_acceleration>
+        <max_angular_velocity>2.0</max_angular_velocity>
 
     <!-- topic, frames, and odometry -->
         <topic>cmd_vel</topic>
@@ -101,6 +103,14 @@
     <joint_name>top_ball_joint</joint_name>
 </plugin>
 
+<plugin filename="gz-sim-odometry-publisher-system"
+        name="gz::sim::systems::OdometryPublisher">
+  <odom_frame>map</odom_frame>
+  <robot_base_frame>base_link</robot_base_frame>
+  <dimensions>2</dimensions>
+  <publish_frequency>30</publish_frequency>
+</plugin>
+
 </gazebo>
 
 
@@ -120,7 +130,7 @@
 
         <topic>scan</topic>
         <frame_id>lidar_link</frame_id>
-        <update_rate>50</update_rate>
+        <update_rate>5</update_rate>
 
         <lidar>
             <scan>
@@ -171,5 +181,7 @@
     </plugin>
 
 </gazebo>
+
+
 
 </robot>

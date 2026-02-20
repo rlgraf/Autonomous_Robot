@@ -1,0 +1,14 @@
+package.xml
+setup.cfg
+setup.py
+../../build/new_gazebo_robot/new_gazebo_robot.egg-info/PKG-INFO
+../../build/new_gazebo_robot/new_gazebo_robot.egg-info/SOURCES.txt
+../../build/new_gazebo_robot/new_gazebo_robot.egg-info/dependency_links.txt
+../../build/new_gazebo_robot/new_gazebo_robot.egg-info/requires.txt
+../../build/new_gazebo_robot/new_gazebo_robot.egg-info/top_level.txt
+../../build/new_gazebo_robot/new_gazebo_robot.egg-info/zip-safe
+new_gazebo_robot/__init__.py
+resource/new_gazebo_robot
+test/test_copyright.py
+test/test_flake8.py
+test/test_pep257.py

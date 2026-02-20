@@ -37,6 +37,12 @@ setup(
         'spin_head = mobile_robot.spin_head:main',
         'guest_find = mobile_robot.guest_find:main',
         'guest_approach = mobile_robot.guest_approach:main',
+        'simple_guest_find = mobile_robot.simple_guest_find:main',
+        'simple_guest_approach = mobile_robot.simple_guest_approach:main',
+        'bounce_cylinder = mobile_robot.bounce_cylinder:main',
+        'bounce_2cylinders = mobile_robot.bounce_2cylinders:main',
+        'rotate_90_degrees = mobile_robot.rotate_90_degrees:main',
+        'square_driver_with_logging = mobile_robot.square_driver_with_logging:main',
         ],
     },
 )

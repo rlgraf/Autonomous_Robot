@@ -54,4 +54,34 @@
   gz_type_name: "gz.msgs.Double"
   direction: ROS_TO_GZ
 
+# gz world truth
+- ros_topic_name: /gt_odom
+  gz_topic_name: /model/differential_drive_robot/odometry
+  ros_type_name: nav_msgs/msg/Odometry
+  gz_type_name: gz.msgs.Odometry
+  direction: GZ_TO_ROS
+
+# moving cylinder
+- ros_topic_name: "/model/cylinder_moving/cmd_vel"
+  gz_topic_name: "/model/cylinder_moving/cmd_vel"
+  ros_type_name: "geometry_msgs/msg/Twist"
+  gz_type_name: "gz.msgs.Twist"
+  direction: ROS_TO_GZ
+
+# cylinders for 2 moving case
+- ros_topic_name: /model/cylinder_moving_1/cmd_vel
+  gz_topic_name: /model/cylinder_moving_1/cmd_vel
+  ros_type_name: geometry_msgs/msg/Twist
+  gz_type_name: gz.msgs.Twist
+  direction: ROS_TO_GZ
+
+- ros_topic_name: /model/cylinder_moving_2/cmd_vel
+  gz_topic_name: /model/cylinder_moving_2/cmd_vel
+  ros_type_name: geometry_msgs/msg/Twist
+  gz_type_name: gz.msgs.Twist
+  direction: ROS_TO_GZ
+
+
+
+
 

@@ -1,0 +1,30 @@
+running egg_info
+creating ../../build/new_gazebo_robot/new_gazebo_robot.egg-info
+writing ../../build/new_gazebo_robot/new_gazebo_robot.egg-info/PKG-INFO
+writing dependency_links to ../../build/new_gazebo_robot/new_gazebo_robot.egg-info/dependency_links.txt
+writing requirements to ../../build/new_gazebo_robot/new_gazebo_robot.egg-info/requires.txt
+writing top-level names to ../../build/new_gazebo_robot/new_gazebo_robot.egg-info/top_level.txt
+writing manifest file '../../build/new_gazebo_robot/new_gazebo_robot.egg-info/SOURCES.txt'
+reading manifest file '../../build/new_gazebo_robot/new_gazebo_robot.egg-info/SOURCES.txt'
+writing manifest file '../../build/new_gazebo_robot/new_gazebo_robot.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/russe/Autonomous_Robot/build/new_gazebo_robot/build
+creating /home/russe/Autonomous_Robot/build/new_gazebo_robot/build/lib
+creating /home/russe/Autonomous_Robot/build/new_gazebo_robot/build/lib/new_gazebo_robot
+copying new_gazebo_robot/__init__.py -> /home/russe/Autonomous_Robot/build/new_gazebo_robot/build/lib/new_gazebo_robot
+running install
+running install_lib
+creating /home/russe/Autonomous_Robot/install/new_gazebo_robot/lib/python3.12/site-packages/new_gazebo_robot
+copying /home/russe/Autonomous_Robot/build/new_gazebo_robot/build/lib/new_gazebo_robot/__init__.py -> /home/russe/Autonomous_Robot/install/new_gazebo_robot/lib/python3.12/site-packages/new_gazebo_robot
+byte-compiling /home/russe/Autonomous_Robot/install/new_gazebo_robot/lib/python3.12/site-packages/new_gazebo_robot/__init__.py to __init__.cpython-312.pyc
+running install_data
+creating /home/russe/Autonomous_Robot/install/new_gazebo_robot/share/ament_index
+creating /home/russe/Autonomous_Robot/install/new_gazebo_robot/share/ament_index/resource_index
+creating /home/russe/Autonomous_Robot/install/new_gazebo_robot/share/ament_index/resource_index/packages
+copying resource/new_gazebo_robot -> /home/russe/Autonomous_Robot/install/new_gazebo_robot/share/ament_index/resource_index/packages
+copying package.xml -> /home/russe/Autonomous_Robot/install/new_gazebo_robot/share/new_gazebo_robot
+running install_egg_info
+Copying ../../build/new_gazebo_robot/new_gazebo_robot.egg-info to /home/russe/Autonomous_Robot/install/new_gazebo_robot/lib/python3.12/site-packages/new_gazebo_robot-0.0.0-py3.12.egg-info
+running install_scripts
+writing list of installed files to '/home/russe/Autonomous_Robot/build/new_gazebo_robot/install.log'

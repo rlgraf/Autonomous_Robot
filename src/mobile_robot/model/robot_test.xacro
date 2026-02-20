@@ -1,0 +1,404 @@
+<?xml version="1.0"?>
+<!-- ###########################################################    -->
+<!-- URDF DESCRIPTION OF THE DIFFERENTIAL DRIVE ROBOT               -->
+<!-- Made by Aleksandar Haber                                       -->
+<!-- See the license!                                               -->
+<!-- This code is the ownership of Aleksandar Haber                 -->
+<!-- ###########################################################    -->
+<!-- FOR ALL THE DIMENSIONS SEE THE PDF FILES THAT COME WITH THIS TUTORIAL  -->
+<robot name="differential_drive_robot" xmlns:xacro="https://www.ros.org/wiki/xacro">
+
+  <!-- ###########################################################    -->
+  <!--            Geometry  and constants                             -->
+  <!-- ###########################################################    -->
+
+  <!-- Pi constant -->
+  <xacro:property name="pi_const" value="3.14159265"/>
+
+  <!-- Body dimensions -->
+  <xacro:property name="a" value="1"  />
+  <xacro:property name="b" value="0.3" />
+  <xacro:property name="c" value="0.6"/>
+
+  <!-- Wheel dimensions -->
+  <xacro:property name="r" value="0.15"/>  <!-- drive wheel radius -->
+  <xacro:property name="d" value="0.1"/>   <!-- drive wheel width -->
+
+  <xacro:property name="s1" value="${b/2+r}"/>
+  <xacro:property name="s2" value="${2*r}"/>
+  <xacro:property name="s3" value="${2*r}"/>              <!-- caster X offset -->
+  <xacro:property name="s4" value="${c/2+d/2}"/>
+
+  <!-- ###########################################################    -->
+  <!--     Mass and inertia                                           -->
+  <!-- ###########################################################    -->
+
+  <!-- Material density -->
+  <xacro:property name="d1" value="2710.0"/>
+  <xacro:property name="d2" value="2710.0"/>
+  <xacro:property name="d3" value="2710.0"/>
+
+  <!-- Robot body mass, wheel mass -->
+  <xacro:property name="m1" value="${d1*a*b*c}"/>
+  <xacro:property name="m2" value="${d2*pi_const*r*r*d}"/>
+
+  <!-- Moments of inertia of the robot body -->
+  <xacro:property name="Ix_body" value="${(1/12)*m1*(b*b+c*c) }" />
+  <xacro:property name="Iy_body" value="${(1/12)*m1*(a*a+b*b) }" />
+  <xacro:property name="Iz_body" value="${(1/12)*m1*(a*a+c*c) }" />
+
+  <!-- Moments of inertia of the drive wheel -->
+  <xacro:property name="Iz_wheel" value="${0.5*m2*r*r}" />
+  <xacro:property name="I_wheel" value="${(1.0/12.0)*m2*(3.0*r*r+d*d)}" />
+
+  <!-- Body inertia macro -->
+  <xacro:macro name="inertia_body">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 ${s1}"/>
+      <mass value="${m1}"/>
+      <inertia ixx="${Ix_body}" ixy="0.0" ixz="0.0" iyy="${Iy_body}" iyz="0" izz="${Iz_body}" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- Drive wheel inertia macro -->
+  <xacro:macro name="inertia_wheel">
+    <inertial>
+      <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+      <mass value="${m2}"/>
+      <inertia ixx="${I_wheel}" ixy="0.0" ixz="0.0" iyy="${I_wheel}" iyz="0" izz="${Iz_wheel}" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- ###########################################################    -->
+  <!--     Aesthetic top ball (with collision)                        -->
+  <!-- ###########################################################    -->
+
+  <xacro:property name="r_ball" value="0.2"/>
+  <xacro:property name="d_ball" value="${d3}"/>
+  <xacro:property name="m_ball" value="${d_ball*(4.0/3.0)*pi_const*r_ball*r_ball*r_ball}"/>
+  <xacro:property name="I_ball" value="${(2.0/5.0)*m_ball*r_ball*r_ball}"/>
+
+  <xacro:macro name="inertia_ball">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="${m_ball}"/>
+      <inertia ixx="${I_ball}" ixy="0.0" ixz="0.0"
+               iyy="${I_ball}" iyz="0.0"
+               izz="${I_ball}" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- ###########################################################    -->
+  <!--     Aesthetic ear (with collision)                             -->
+  <!-- ###########################################################    -->
+
+  <xacro:property name="r_ear" value="0.1333"/>
+  <xacro:property name="d_ear" value="${d3}"/>
+  <xacro:property name="m_ear" value="${d_ear*(4.0/3.0)*pi_const*r_ear*r_ear*r_ear}"/>
+  <xacro:property name="I_ear" value="${(2.0/5.0)*m_ear*r_ear*r_ear}"/>
+
+  <xacro:macro name="inertia_ear">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="${m_ear}"/>
+      <inertia ixx="${I_ear}" ixy="0.0" ixz="0.0"
+               iyy="${I_ear}" iyz="0.0"
+               izz="${I_ear}" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- ###########################################################    -->
+  <!--     BALL CASTER (free-rolling ball using 3 joints)             -->
+  <!-- ###########################################################    -->
+
+  <!-- Ball caster radius (can be smaller than drive wheels) -->
+  <xacro:property name="r_bc" value="0.08"/>
+  <xacro:property name="m_bc" value="0.3"/>
+  <xacro:property name="I_bc" value="${(2.0/5.0)*m_bc*r_bc*r_bc}"/>
+
+  <xacro:macro name="inertia_ball_caster">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="${m_bc}"/>
+      <inertia ixx="${I_bc}" ixy="0" ixz="0"
+               iyy="${I_bc}" iyz="0"
+               izz="${I_bc}" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- small intermediate link inertial -->
+  <xacro:macro name="inertia_small_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia ixx="1e-4" ixy="0" ixz="0"
+               iyy="1e-4" iyz="0"
+               izz="1e-4" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- ###########################################################   -->
+  <!--            Include additional files                           -->
+  <!-- ###########################################################   -->
+
+  <xacro:include filename="$(find mobile_robot)/model/robot.gazebo" />
+
+  <!-- ###########################################################   -->
+  <!-- FROM HERE WE DEFINE LINKS, JOINTS                             -->
+  <!-- ###########################################################   -->
+
+  <!-- Fictious link -->
+  <link name="base_footprint"> </link>
+  <joint name="body_link_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="body_link"/>
+  </joint>
+
+  <!-- Body -->
+  <link name="body_link">
+    <visual>
+      <geometry>
+        <box size="${a} ${c} ${b}" />
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 ${s1}"/>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="${a} ${c} ${b}" />
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 ${s1}"/>
+    </collision>
+
+    <xacro:inertia_body />
+  </link>
+
+  <!-- Right wheel -->
+  <joint name="wheel1_joint" type="continuous" >
+    <parent link="body_link"/>
+    <child link="wheel1_link" />
+    <origin xyz="${-s2} ${-s4} ${r}" rpy="0 0 0" />
+    <axis xyz="0 1 0"/>
+    <limit effort="50000" velocity="10" />
+    <dynamics damping="1.0" friction="1.0" />
+  </joint>
+
+  <link name="wheel1_link">
+    <visual>
+      <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="${d}" radius="${r}"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="${d}" radius="${r}"/>
+      </geometry>
+    </collision>
+
+    <xacro:inertia_wheel />
+  </link>
+
+  <!-- Left wheel -->
+  <joint name="wheel2_joint" type="continuous" >
+    <parent link="body_link"/>
+    <child link="wheel2_link" />
+    <origin xyz="${-s2} ${s4} ${r}" rpy="0 0 0" />
+    <axis xyz="0 1 0"/>
+    <limit effort="50000" velocity="10" />
+    <dynamics damping="1.0" friction="1.0" />
+  </joint>
+
+  <link name="wheel2_link">
+    <visual>
+      <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="${d}" radius="${r}"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="${d}" radius="${r}"/>
+      </geometry>
+    </collision>
+
+    <xacro:inertia_wheel />
+  </link>
+
+  <!-- ###########################################################   -->
+  <!-- BALL CASTER (replaces old fixed caster sphere)                -->
+  <!-- ###########################################################   -->
+
+  <!-- Link: yaw -->
+  <link name="caster_yaw_link">
+    <xacro:inertia_small_link />
+  </link>
+
+  <joint name="caster_yaw_joint" type="continuous">
+    <parent link="body_link"/>
+    <child  link="caster_yaw_link"/>
+
+    <!-- Critical: ball center height should be r_bc above ground -->
+    <origin xyz="${s3} 0 ${r_bc}" rpy="0 0 0"/>
+
+    <axis xyz="0 0 1"/>
+    <dynamics damping="0.02" friction="0.0"/>
+  </joint>
+
+  <!-- Link: pitch -->
+  <link name="caster_pitch_link">
+    <xacro:inertia_small_link />
+  </link>
+
+  <joint name="caster_pitch_joint" type="continuous">
+    <parent link="caster_yaw_link"/>
+    <child  link="caster_pitch_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <dynamics damping="0.02" friction="0.0"/>
+  </joint>
+
+  <!-- Link: roll + actual ball collision -->
+  <link name="caster_ball_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="${r_bc}" />
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="${r_bc}" />
+      </geometry>
+    </collision>
+
+    <xacro:inertia_ball_caster />
+  </link>
+
+  <joint name="caster_roll_joint" type="continuous">
+    <parent link="caster_pitch_link"/>
+    <child  link="caster_ball_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <dynamics damping="0.02" friction="0.0"/>
+  </joint>
+
+  <!-- ###########################################################   -->
+  <!-- Ball on top of chassis                                        -->
+  <!-- ###########################################################   -->
+
+  <joint name="top_ball_joint" type="continuous">
+    <parent link="body_link"/>
+    <child link="top_ball_link"/>
+    <origin xyz="0 0 ${s1 + b/2 + r_ball}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="5.0" velocity="2.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+  </joint>
+
+  <link name="top_ball_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${r_ball}"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${r_ball}"/>
+      </geometry>
+    </collision>
+
+    <xacro:inertia_ball />
+  </link>
+
+  <!-- Left ear -->
+  <joint name="left_ear_joint" type="fixed">
+    <parent link="top_ball_link"/>
+    <child link="left_ear_link"/>
+    <origin xyz="0 ${r_ball*0.7071 + r_ear*0.5} ${r_ball*0.7071 + r_ear*0.5}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="left_ear_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${r_ear}"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${r_ear}"/>
+      </geometry>
+    </collision>
+
+    <xacro:inertia_ear />
+  </link>
+
+  <!-- Right ear -->
+  <joint name="right_ear_joint" type="fixed">
+    <parent link="top_ball_link"/>
+    <child link="right_ear_link"/>
+    <origin xyz="0 ${-r_ball*0.7071 - r_ear*0.5} ${r_ball*0.7071 + r_ear*0.5}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="right_ear_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${r_ear}"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${r_ear}"/>
+      </geometry>
+    </collision>
+
+    <xacro:inertia_ear />
+  </link>
+
+  <!-- LIDAR -->
+  <joint name="lidar_joint" type="fixed">
+    <origin xyz="0.0 0 ${b+r}" rpy="0 0 0"/>
+    <parent link="body_link"/>
+    <child link="lidar_link"/>
+    <axis xyz="0 1 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name='lidar_link'>
+    <visual>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.1"/>
+      </geometry>
+    </visual>
+
+    <collision name='collision'>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.1"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <mass value="1e-6"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0"
+               iyy="1e-6" iyz="0" izz="1e-6"/>
+    </inertial>
+  </link>
+
+</robot>

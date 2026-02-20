@@ -101,12 +101,13 @@ def generate_launch_description():
         ],
         output='screen'
     )
-
+    
     # TF alias for the LaserScan frame_id coming from ros_gz_bridge:
     # /scan.header.frame_id == "differential_drive_robot/base_footprint/gpu_lidar"
     # Make that frame exist by tying it to the real URDF lidar frame "lidar_link".
     #
     # This fixes TF lookup errors without needing to change ros_gz_bridge internals.
+    
     lidar_frame_alias_tf = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
@@ -118,7 +119,7 @@ def generate_launch_description():
         ],
         output='screen'
     )
-
+    
     ld = LaunchDescription()
     ld.add_action(gazeboLaunch)
     ld.add_action(spawnModelNodeGazebo)

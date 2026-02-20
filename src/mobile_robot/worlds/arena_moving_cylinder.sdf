@@ -157,7 +157,7 @@
     <!-- Stationary cylinder -->
     <model name="cylinder_stationary">
       <static>true</static>
-      <pose>-2 3 0.25 0 0 0</pose>
+      <pose>-2 -2 0.25 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
@@ -194,7 +194,7 @@
     <!-- Moving cylinder -->
     <model name="cylinder_moving">
       <static>false</static>
-      <pose>2 0 0.25 0 0 0</pose>
+      <pose>-4 3 0.25 0 0 0</pose>
 
       <link name="base_link">
         <inertial>
@@ -241,30 +241,12 @@
         </visual>
       </link>
 
-      <plugin filename="gz-sim-trajectory-follower-system"
-        name="gz::sim::systems::TrajectoryFollower">
+      <plugin filename="gz-sim-velocity-control-system"
+          name="gz::sim::systems::VelocityControl">
+        <!-- Optional: defaults to /model/<model_name>/cmd_vel -->
+        <topic>/model/cylinder_moving/cmd_vel</topic>
         <link_name>base_link</link_name>
-        <loop>true</loop>
-        <linear_damping>2.0</linear_damping>
-        <angular_damping>3.0</angular_damping>
-
-
-        <!-- Stay inside y = ±5 walls -->
-        <waypoints>
-          <waypoint>2 4</waypoint>
-          <waypoint>2 -4</waypoint>
-        </waypoints>
-
-        <!-- Tune so it doesn't ram the targets -->
-        <range_tolerance>0.8</range_tolerance>         <!-- default 0.5m :contentReference[oaicite:2]{index=2} -->
-        <bearing_tolerance>5</bearing_tolerance>       <!-- default 2 deg :contentReference[oaicite:3]{index=3} -->
-        <force>8</force>                              <!-- default 60N :contentReference[oaicite:4]{index=4} -->
-        <torque>10</torque>                             <!-- default 50Nm :contentReference[oaicite:5]{index=5} -->
-        <zero_vel_on_bearing_reached>true</zero_vel_on_bearing_reached> <!-- experimental :contentReference[oaicite:6]{index=6} -->
       </plugin>
-
-
-
 
     </model>
 
