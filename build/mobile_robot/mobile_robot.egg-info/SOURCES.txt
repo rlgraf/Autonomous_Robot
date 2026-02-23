@@ -13,6 +13,7 @@ launch/gazebo_model.launch.py
 launch/gazebo_model_moving_cylinder.launch.py
 launch/gazebo_model_with_cylinders.launch.py
 launch/guest_find_approach.launch.py
+launch/interaction_logic.launch.py
 launch/simple_avoid_obstacle.launch.py
 launch/simple_guest_find_approach.launch.py
 mobile_robot/__init__.py
@@ -21,6 +22,12 @@ mobile_robot/bounce_2cylinders.py
 mobile_robot/bounce_cylinder.py
 mobile_robot/guest_approach.py
 mobile_robot/guest_find.py
+mobile_robot/identify.py
+mobile_robot/identify2.py
+mobile_robot/identify3.py
+mobile_robot/identify_move_supervisor.py
+mobile_robot/move.py
+mobile_robot/move2.py
 mobile_robot/rotate_90_degrees.py
 mobile_robot/simple_avoid_obstacle.py
 mobile_robot/simple_guest_approach.py
@@ -41,5 +48,6 @@ test/test_flake8.py
 test/test_pep257.py
 worlds/arena.sdf
 worlds/arena_2moving_cylinders.sdf
+worlds/arena_long.sdf
 worlds/arena_moving_cylinder.sdf
 worlds/arena_with_cylinders.py

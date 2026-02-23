@@ -17,8 +17,8 @@ class StationaryTargetApproach(Node):
 
         self.declare_parameter("base_frame", "base_footprint")
         self.declare_parameter("cmd_vel_topic", "/cmd_vel")
-        self.declare_parameter("max_lin", 0.2)
-        self.declare_parameter("max_ang", 0.2)
+        self.declare_parameter("max_lin",  1.0)
+        self.declare_parameter("max_ang", 1.0)
         self.declare_parameter("stop_dist", 1.0)
         self.declare_parameter("k_ang", 1.8)
         self.declare_parameter("k_lin", 0.6)

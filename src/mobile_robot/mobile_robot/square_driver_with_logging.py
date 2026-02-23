@@ -48,7 +48,7 @@ class SquareDriver(Node):
         self.log_rate = self.get_parameter("log_rate_hz").value
 
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
-        self.odom_sub = self.create_subscription(Odometry, "/odom", self.odom_cb, 50)
+        self.odom_sub = self.create_subscription(Odometry, "/odom_gt", self.odom_cb, 50)
 
         self.timer = self.create_timer(1.0 / 30.0, self.control_loop)
         self.log_timer = self.create_timer(1.0 / self.log_rate, self.log_position)

@@ -1,0 +1,5 @@
+  File "/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/find.py", line 36
+    self.logger().info(
+                      ^
+SyntaxError: '(' was never closed
+

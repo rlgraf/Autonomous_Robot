@@ -2,8 +2,14 @@
 battery_node = mobile_robot.battery_node:main
 bounce_2cylinders = mobile_robot.bounce_2cylinders:main
 bounce_cylinder = mobile_robot.bounce_cylinder:main
+find = mobile_robot.find:main
 guest_approach = mobile_robot.guest_approach:main
 guest_find = mobile_robot.guest_find:main
+identify2 = mobile_robot.identify2:main
+identify3 = mobile_robot.identify3:main
+identify_move_supervisor = mobile_robot.identify_move_supervisor:main
+move = mobile_robot.move:main
+move2 = mobile_robot.move2:main
 rotate_90_degrees = mobile_robot.rotate_90_degrees:main
 simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main
 simple_guest_approach = mobile_robot.simple_guest_approach:main

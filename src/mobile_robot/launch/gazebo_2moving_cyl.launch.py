@@ -28,7 +28,7 @@ def generate_launch_description():
     robotXacroName = 'differential_drive_robot'
 
     modelFileRelativePath = 'model/robot.xacro'
-    worldFileRelativePath = 'worlds/arena_2moving_cylinders.sdf'
+    worldFileRelativePath = 'worlds/arena_long.sdf'
 
     # bounce_cylinder.py should be installed into your package (recommended: scripts/)
     # Example install: install(PROGRAMS scripts/bounce_cylinder.py DESTINATION lib/${PROJECT_NAME})
@@ -156,6 +156,18 @@ def generate_launch_description():
         actions=[bounceCylinderNode]
     )
 
+    bridge_odom = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='odom_gt_bridge',
+        output='screen',
+        arguments=[
+            '/model/differential_drive_robot/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry',
+            '--ros-args',
+            '-r', '/model/differential_drive_robot/odometry:=/odom_gt',
+        ],
+    )
+
     ld = LaunchDescription()
     ld.add_action(SetEnvironmentVariable('GZ_PARTITION', gz_partition))
     ld.add_action(gazeboLaunch)
@@ -165,5 +177,6 @@ def generate_launch_description():
     ld.add_action(delayed_spawn)
     ld.add_action(delayed_bounce)
     ld.add_action(ekf_global)
+    ld.add_action(bridge_odom)
 
     return ld

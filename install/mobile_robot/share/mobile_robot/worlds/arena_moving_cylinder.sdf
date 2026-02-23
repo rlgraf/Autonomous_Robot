@@ -157,7 +157,7 @@
     <!-- Stationary cylinder -->
     <model name="cylinder_stationary">
       <static>true</static>
-      <pose>-2 -2 0.25 0 0 0</pose>
+      <pose>-2 -4 0.25 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
@@ -194,7 +194,7 @@
     <!-- Moving cylinder -->
     <model name="cylinder_moving">
       <static>false</static>
-      <pose>-4 3 0.25 0 0 0</pose>
+      <pose>-4 1 0.25 0 0 0</pose>
 
       <link name="base_link">
         <inertial>

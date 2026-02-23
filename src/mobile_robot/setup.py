@@ -43,6 +43,12 @@ setup(
         'bounce_2cylinders = mobile_robot.bounce_2cylinders:main',
         'rotate_90_degrees = mobile_robot.rotate_90_degrees:main',
         'square_driver_with_logging = mobile_robot.square_driver_with_logging:main',
+        'find = mobile_robot.find:main',
+        'identify2 = mobile_robot.identify2:main',
+        'identify3 = mobile_robot.identify3:main',
+        'move = mobile_robot.move:main',
+        'move2 = mobile_robot.move2:main',
+        'identify_move_supervisor = mobile_robot.identify_move_supervisor:main',
         ],
     },
 )

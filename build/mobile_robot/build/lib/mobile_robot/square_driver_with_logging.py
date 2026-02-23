@@ -38,12 +38,7 @@ class SquareDriver(Node):
         self.declare_parameter("pos_tol", 0.03)
         self.declare_parameter("yaw_tol_deg", 1.0)
         self.declare_parameter("log_rate_hz", 5.0)
-
-        self.declare_parameter("odom_topic", "/odom")
-        odom_topic = self.get_parameter("odom_topic").value
-        self.odom_sub = self.create_subscription(Odometry, odom_topic, self.odom_cb, 50)
-        self.get_logger().info(f"Using odometry topic: {odom_topic}")
-
+        
 
         self.side_length = self.get_parameter("side_length").value
         self.linear_speed = self.get_parameter("linear_speed").value
@@ -53,7 +48,7 @@ class SquareDriver(Node):
         self.log_rate = self.get_parameter("log_rate_hz").value
 
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
-        self.odom_sub = self.create_subscription(Odometry, "/odom", self.odom_cb, 50)
+        self.odom_sub = self.create_subscription(Odometry, "/odom_gt", self.odom_cb, 50)
 
         self.timer = self.create_timer(1.0 / 30.0, self.control_loop)
         self.log_timer = self.create_timer(1.0 / self.log_rate, self.log_position)

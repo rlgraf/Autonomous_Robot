@@ -1,0 +1,5 @@
+  File "/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/find.py", line 45
+    )
+    ^
+SyntaxError: closing parenthesis ')' does not match opening parenthesis '{' on line 44
+

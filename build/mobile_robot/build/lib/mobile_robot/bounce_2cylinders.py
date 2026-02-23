@@ -16,8 +16,8 @@ class CylinderBouncer:
         node.declare_parameter(ns + "cmd_vel_topic", f"/model/{name}/cmd_vel")
         node.declare_parameter(ns + "speed", 1.0)
         node.declare_parameter(ns + "hz", 20.0)
-        node.declare_parameter(ns + "min_x", -8.0)
-        node.declare_parameter(ns + "max_x", 8.0)
+        node.declare_parameter(ns + "min_x", -32.0)
+        node.declare_parameter(ns + "max_x", 32.0)
         node.declare_parameter(ns + "margin", 0.15)
 
         self.cmd_vel_topic = node.get_parameter(ns + "cmd_vel_topic").value
