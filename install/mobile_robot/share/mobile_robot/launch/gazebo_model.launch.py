@@ -103,10 +103,24 @@ def generate_launch_description():
         executable='parameter_bridge',
         arguments=[
         '--ros-args',
-        '-p',
-        f'config_file:={bridge_params}',
+        '-p', f'config_file:={bridge_params}',
+        '-p', 'use_sim_time:=True',
+        '-p', 'override_frame_id:=lidar_link',
     ],
     output='screen',
+    )
+
+    bridge_odom = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='odom_gt_bridge',
+        arguments=[
+            '/model/differential_drive_robot/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry'
+        ],
+        remappings=[
+            ('/model/differential_drive_robot/odometry', '/odom_gt')
+        ],
+        output='screen'
     )
 
 
@@ -144,27 +158,7 @@ def generate_launch_description():
         sdf_string = (station_sdf_template
                       .replace('STATION_ID',    str(i))
                       .replace('STATION_RADIUS',str(charging_radius)))
-    #     sdf_string = f"""<?xml version="1.0"?>
-    # <sdf version="1.8">
-    #     <model name="charging_station_{i}">
-    #         <static>true</static>
-    #         <link name="pad_link">
-    #             <visual name="pad_visual">
-    #                 <geometry>
-    #                     <cylinder>
-    #                         <radius>{charging_radius}</radius>
-    #                         <length>0.02</length>
-    #                     </cylinder>
-    #                 </geometry>
-    #                 <material>
-    #                     <ambient>0 0.8 0 1</ambient>
-    #                     <diffuse>0 0.8 0 1</diffuse>
-    #                     <specular>0 0.1 0 1</specular>
-    #                 </material>
-    #             </visual>
-    #         </link>
-    #     </model>
-    # </sdf>"""
+
 
         spawn_station_nodes.append(
             Node(
@@ -182,29 +176,6 @@ def generate_launch_description():
             
         )
     
-    # # here we create an empty launch description object
-    # launchDescriptionObject = LaunchDescription()
-    # launchDescriptionObject.add_action(SetEnvironmentVariable('QT_QPA_PLATFORM','xcb'))
-    # # we add gazeboLaunch
-    # # launchDescriptionObject.add_action(set_qt_platform)
-    # # launchDescriptionObject.add_action(set_render_engine)
-    # launchDescriptionObject.add_action(gazeboLaunch)
-    # launchDescriptionObject.add_action(nodeRobotStatePublisher)
-    # # we add the two nodes
-    # launchDescriptionObject.add_action(
-    #     TimerAction(
-    #         period=5.0,
-    #         actions = [spawnModelNodeGazebo]
-    #         )
-    # )
-    # launchDescriptionObject.add_action(
-    #     TimerAction(
-    #         period=6.0,
-    #         actions = [start_gazebo_ros_bridge_cmd]
-    #         )
-    # )   
-    # # launchDescriptionObject.add_action(start_gazebo_ros_bridge_cmd)
-    # return launchDescriptionObject
 
         # ------------------------------------------------------------------ #
     # Launch description                                                   #
@@ -228,6 +199,10 @@ def generate_launch_description():
         TimerAction(
             period=6.0,
             actions=[start_gazebo_ros_bridge_cmd]
+        ),
+        TimerAction(
+            period=6.0,
+            actions=[bridge_odom]
         ),
         TimerAction(
             period=7.0,   # just after bridge at 15s

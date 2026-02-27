@@ -86,13 +86,25 @@ class BatteryNode(Node):
         self._last_time       = self.get_clock().now()
         self._charging        = False
         # in __init__, add with the other state variables:
-        self._gz_voltage  = self._voltage       
+        self._gz_voltage  = self._voltage
+
+        # extra test states
+        self._pos_x_odom        = 0.0
+        self._pos_y_odom        = 0.0
 
         # Subscribe to odometry to get current velocity
         self.create_subscription(
             Odometry,
             'odom',
             self._odom_callback,
+            10
+        )
+
+        # Subscribe to ground truth odometry from Gazebo for accurate position/velocity
+        self.create_subscription(
+            Odometry,
+            '/odom_gt',
+            self._gt_odom_callback,
             10
         )
 
@@ -113,7 +125,7 @@ class BatteryNode(Node):
 
 
 
-        self.get_logger().info('Battery node started.')
+        self.get_logger().info('Battery node started (using ground truth odometry).')
         self.get_logger().info(
             f'Capacity: {self._capacity} Ah | Idle drain: {self._idle_drain:.3f} A | '
             f'Movement drain: {self._move_drain} A/(m/s) linear, {self._turn_drain} A/(rad/s) angular'
@@ -123,10 +135,14 @@ class BatteryNode(Node):
         )
 
     def _odom_callback(self, msg: Odometry):
-        self._pos_x       = msg.pose.pose.position.x
-        self._pos_y       = msg.pose.pose.position.y
+        self._pos_x_odom       = msg.pose.pose.position.x
+        self._pos_y_odom       = msg.pose.pose.position.y
         self._linear_vel  = abs(msg.twist.twist.linear.x)
         self._angular_vel = abs(msg.twist.twist.angular.z)
+
+    def _gt_odom_callback(self, msg: Odometry):
+        self._pos_x       = msg.pose.pose.position.x
+        self._pos_y       = msg.pose.pose.position.y
 
     def _gz_battery_callback(self, msg: BatteryState):
         # Use Gazebo's voltage calculation (more accurate)
@@ -352,6 +368,8 @@ class BatteryNode(Node):
         # msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LION
         msg.present         = True
 
+        self.get_logger().info(f'Odometry robot x: {self._pos_x_odom}, y: {self._pos_y_odom}')
+        self.get_logger().info(f'Odometry true  x: {self._pos_x}, y: {self._pos_y}')
 
         # Update charging station visual colors
         self._update_station_colors()
