@@ -75,7 +75,7 @@ class BatteryNode(Node):
         # Look up visual/parent IDs from Gazebo scene at startup
         # Small delay to ensure stations are spawned before we query
         self._station_ids = {}   # idx -> (visual_id, parent_id)
-        self._init_timer = self.create_timer(0.0, self._lookup_station_ids)
+        self._init_timer = self.create_timer(0.5, self._lookup_station_ids)
 
         # State
         self._charge_ah       = self._capacity  # current charge in Ah
@@ -91,6 +91,7 @@ class BatteryNode(Node):
         # extra test states
         self._pos_x_odom        = 0.0
         self._pos_y_odom        = 0.0
+        self._world_name: str | None = None
 
         # Subscribe to odometry to get current velocity
         self.create_subscription(
@@ -163,53 +164,79 @@ class BatteryNode(Node):
         speed = math.sqrt(self._linear_vel ** 2 + self._angular_vel ** 2)
         return speed < self._stat_thresh
     
-    def _lookup_station_ids(self):
-        """Query Gazebo scene once to get visual and parent IDs for each station."""
+    
+    def _get_world_name(self) -> str | None:
+        """Auto-discover the Gazebo world name."""
         try:
             result = subprocess.run(
                 ['gz', 'service',
-                 '-s', '/world/default/scene/info',
-                 '--reqtype', 'gz.msgs.Empty',
-                 '--reptype', 'gz.msgs.Scene',
-                 '--timeout', '2000',
-                 '--req', ''],
+                '-s', '/gazebo/worlds',
+                '--reqtype', 'gz.msgs.Empty',
+                 '--reptype', 'gz.msgs.StringMsg_V',
+                '--timeout', '2000',
+                '--req', ''],
+                capture_output=True, text=True, timeout=5.0
+            )
+            # Response looks like: data: "arena"
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if line.startswith('data:'):
+                    world = line.split('"')[1]
+                    self.get_logger().info(f'Discovered world name: "{world}"')
+                    return world
+        except Exception as e:
+            self.get_logger().warn(f'Could not discover world name: {e}')
+        return None
+    
+    def _lookup_station_ids(self):
+        """Query Gazebo scene repeatedly until all station IDs are resolved."""
+        self._world_name = self._get_world_name()
+        if self._world_name is None:
+            self.get_logger().warn('World name unknown — retrying...')
+            return  # timer will retry
+        try:
+            result = subprocess.run(
+                ['gz', 'service',
+                '-s', f'/world/{self._world_name}/scene/info',  # ← dynamic world name
+                '--reqtype', 'gz.msgs.Empty',
+                '--reptype', 'gz.msgs.Scene',
+                '--timeout', '2000',
+                '--req', ''],
                 capture_output=True, text=True, timeout=5.0
             )
             scene_text = result.stdout
-
             for i in range(len(self._stations)):
+                if i in self._station_ids:
+                    continue  # already resolved, skip
                 name = f'charging_station_{i}'
-                # Find the block for this station
                 start = scene_text.find(f'name: "{name}"')
                 if start == -1:
                     self.get_logger().warn(f'Could not find {name} in scene')
                     continue
                 block = scene_text[start:start + 500]
-
-                # Extract visual id and parent_id from the visual block
                 visual_start = block.find('visual {')
                 if visual_start == -1:
                     continue
                 visual_block = block[visual_start:visual_start + 200]
-
                 visual_id  = self._parse_id(visual_block, 'id:')
                 parent_id  = self._parse_id(visual_block, 'parent_id:')
-
                 if visual_id and parent_id:
                     self._station_ids[i] = (visual_id, parent_id)
                     self.get_logger().info(
                         f'Station {i}: visual_id={visual_id} parent_id={parent_id}'
                     )
-
         except Exception as e:
             self.get_logger().warn(f'Failed to look up station IDs: {e}')
 
-        # One-shot — cancel after first run
-        self._init_timer.cancel()
-
-        # Now publish initial idle colors for all stations
-        for i, (sx, sy) in enumerate(self._stations):
-            self._set_station_color(i, 'idle')
+        # Only cancel + initialize colors once ALL stations are resolved
+        if len(self._station_ids) == len(self._stations):
+            self._init_timer.cancel()
+            self.get_logger().info('All charging station IDs resolved.')
+            for i in range(len(self._stations)):
+                self._set_station_color(i, 'idle')
+        else:
+            missing = [i for i in range(len(self._stations)) if i not in self._station_ids]
+            self.get_logger().warn(f'Stations not yet found: {missing} — retrying...')
 
     def _parse_id(self, text: str, field: str) -> int | None:
         """Extract an integer ID field from a protobuf text block."""
@@ -269,11 +296,11 @@ class BatteryNode(Node):
         try:
             subprocess.run(
                 ['gz', 'service',
-                 '-s', '/world/default/visual_config',
-                 '--reqtype', 'gz.msgs.Visual',
-                 '--reptype', 'gz.msgs.Boolean',
-                 '--timeout', '2000',
-                 '--req', req],
+                '-s', f'/world/{self._world_name}/visual_config',  # ← dynamic world name
+                '--reqtype', 'gz.msgs.Visual',
+                '--reptype', 'gz.msgs.Boolean',
+                '--timeout', '2000',
+                '--req', req],
                 timeout=3.0, capture_output=True
             )
         except Exception as e:
@@ -296,14 +323,17 @@ class BatteryNode(Node):
         full       = self._charge_ah >= self._capacity
 
 
-        # Enter charging: at a station, not moving, battery not full
-        if at_station and stationary and not full:
-            self._charging = True
-
-        # Leave charging: moved away, started moving, or now full
-        if self._charging and (not at_station or not stationary or full):
-            self._charging = False
+        # ── Charging state machine ────────────────────────────────────────────
+        # Entry: must be at station AND stationary to begin
+        # Exit:  ONLY when battery reaches 100% — position/motion noise ignored
+        if not self._charging:
+            if at_station and stationary and not full:
+                self._charging = True
+                self.get_logger().info('Charging started — locked until 100%.')
+        else:
+            # Locked in charging — only exit condition is full battery
             if full:
+                self._charging = False
                 self.get_logger().info('Charging complete — battery at 100%.')
 
         if self._charging:
@@ -368,8 +398,9 @@ class BatteryNode(Node):
         # msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LION
         msg.present         = True
 
-        self.get_logger().info(f'Odometry robot x: {self._pos_x_odom}, y: {self._pos_y_odom}')
-        self.get_logger().info(f'Odometry true  x: {self._pos_x}, y: {self._pos_y}')
+        # verification of robot odometry drift from true
+        # self.get_logger().info(f'Odometry robot x: {self._pos_x_odom}, y: {self._pos_y_odom}')
+        # self.get_logger().info(f'Odometry true  x: {self._pos_x}, y: {self._pos_y}')
 
         # Update charging station visual colors
         self._update_station_colors()

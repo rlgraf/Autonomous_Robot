@@ -1,4 +1,6 @@
 [console_scripts]
+auto_recharge_node = mobile_robot.auto_recharge_node:main
 battery_node = mobile_robot.battery_node:main
 simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main
+soft_obstacle_avoidance_node = mobile_robot.soft_obstacle_avoidance_node:main
 test_publisher = mobile_robot.test:main

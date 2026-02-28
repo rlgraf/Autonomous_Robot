@@ -16,6 +16,8 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*')),
         (os.path.join('share', package_name, 'model'), glob('model/*')),
         (os.path.join('share', package_name, 'parameters'), glob('parameters/*')),
+        (os.path.join('share', package_name, 'worlds'), glob('worlds/*')),
+        (os.path.join('share', package_name, 'worlds'),     glob('worlds/*.py')), 
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -33,6 +35,8 @@ setup(
         'test_publisher = mobile_robot.test:main',
         'battery_node = mobile_robot.battery_node:main',
         'simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main',
+        'auto_recharge_node = mobile_robot.auto_recharge_node:main',
+        'soft_obstacle_avoidance_node = mobile_robot.soft_obstacle_avoidance_node:main',
         ],
     },
 )

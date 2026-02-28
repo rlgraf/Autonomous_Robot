@@ -325,11 +325,13 @@
 <!-- START: Ball on top of chassis (visual + collision)            -->
 <!-- ###########################################################   -->
 
-<joint name="top_ball_joint" type="fixed">
+<joint name="top_ball_joint" type="continuous">
   <parent link="body_link"/>
   <child link="top_ball_link"/>
-  <!-- Top of chassis is at z = s1 + b/2, then add the ball radius -->
   <origin xyz="0 0 ${s1 + b/2 + r_ball}" rpy="0 0 0"/>
+  <axis xyz="0 0 1"/>
+  <limit effort="5.0" velocity="2.0"/>
+  <dynamics damping="0.2" friction="0.0"/>
 </joint>
 
 <link name="top_ball_link">
