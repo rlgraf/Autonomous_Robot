@@ -1,4 +1,6 @@
 [console_scripts]
+auto_recharge_node = mobile_robot.auto_recharge_node:main
+avoid_while_interact = mobile_robot.avoid_while_interact:main
 battery_node = mobile_robot.battery_node:main
 bounce_2cylinders = mobile_robot.bounce_2cylinders:main
 bounce_cylinder = mobile_robot.bounce_cylinder:main
@@ -7,13 +9,18 @@ guest_approach = mobile_robot.guest_approach:main
 guest_find = mobile_robot.guest_find:main
 identify2 = mobile_robot.identify2:main
 identify3 = mobile_robot.identify3:main
+identify5 = mobile_robot.identify5:main
+identify6 = mobile_robot.identify6:main
 identify_move_supervisor = mobile_robot.identify_move_supervisor:main
 move = mobile_robot.move:main
 move2 = mobile_robot.move2:main
+move5 = mobile_robot.move5:main
+move6 = mobile_robot.move6:main
 rotate_90_degrees = mobile_robot.rotate_90_degrees:main
 simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main
 simple_guest_approach = mobile_robot.simple_guest_approach:main
 simple_guest_find = mobile_robot.simple_guest_find:main
+soft_obstacle_avoidance_node = mobile_robot.soft_obstacle_avoidance:main
 spin_head = mobile_robot.spin_head:main
 square_driver_with_logging = mobile_robot.square_driver_with_logging:main
 test_publisher = mobile_robot.test:main

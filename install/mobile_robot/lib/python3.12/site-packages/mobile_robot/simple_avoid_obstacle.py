@@ -17,11 +17,11 @@ class SimpleLidarAvoider(Node):
         self.declare_parameter('scan_topic', '/scan')
         self.declare_parameter('cmd_vel_topic', '/cmd_vel')
 
-        self.declare_parameter('forward_speed', 0.5) # m/s
-        self.declare_parameter('turn_speed', 0.5) # rad/s
-        self.declare_parameter('stop_distance', 1.5) # meters
+        self.declare_parameter('forward_speed', 0.8) # m/s
+        self.declare_parameter('turn_speed', 0.8) # rad/s
+        self.declare_parameter('stop_distance', 1.0) # meters
         self.declare_parameter('front_angle_deg', 45.0) # +/- degrees to consider "in front"
-        self.declare_parameter('control_hz', 20.0)
+        self.declare_parameter('control_hz', 50.0)
 
         self.scan_topic = self.get_parameter('scan_topic').value
         self.cmd_vel_topic = self.get_parameter('cmd_vel_topic').value

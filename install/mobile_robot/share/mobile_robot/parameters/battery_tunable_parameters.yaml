@@ -9,12 +9,56 @@ battery_node:
     publish_rate_hz: 10.0
 
     # Charging
-    charge_rate_a: 2.0
+    charge_rate_a: 20.0
     charging_radius: 0.5
     stationary_thresh: 0.05
+
+
+    # Charging station visual colors [r, g, b, a]
+    # ambient  = color in shadow
+    # diffuse  = main surface color in direct light
+    # emissive = glow color regardless of lighting (0 = no glow)
+    color_idle:
+      ambient:  [0.0, 0.8, 0.0, 1.0] # 
+      diffuse:  [0.0, 0.8, 0.0, 1.0]
+      specular: [0.0, 0.8, 0.0, 1.0]   # no glow — station is inactive
+
+    color_charging:
+      ambient:  [0.0, 0.0, 0.9, 1.0]  # 
+      diffuse:  [0.0, 0.0, 0.9, 1.0]
+      specular: [0.0, 0.0, 0.9, 1.0]   # 
+
+    color_full:
+      ambient:  [0.0, 0.4, 0.4, 0.2] # green
+      diffuse:  [0.0, 0.9, 0.9, 0.2]
+      specular: [0.0, 1.0, 1.0, 1.0]   # slight green glow
 
     # Charging station positions [[x1,y1], [x2,y2], ...]
     charging_stations:
       - [0.0, 0.0]
       - [5.0, 3.0]
       - [-20.0, -20.0]
+
+      # ─────────────────────────────────────────────────────────────────────────────
+# Auto Recharge Navigation
+# Tuning guide:
+#   low_battery_threshold  – fraction 0–1; robot starts homing below this level
+#   arrived_radius         – should be slightly larger than charging_radius above
+#   k_linear / k_angular   – proportional gains; increase for faster response,
+#                            decrease if the robot overshoots or oscillates
+#   turn_only_angle        – robot drives forward only once heading error is
+#                            smaller than this (radians)
+#   drive_angle            – hysteresis: re-enter turn-only mode if error grows
+#                            past this (must be > turn_only_angle)
+# ─────────────────────────────────────────────────────────────────────────────
+auto_recharge_node:
+  ros__parameters:
+    low_battery_threshold: 0.25   # fraction (0–1); start homing below this
+    arrived_radius:        0.25   # m  — slightly < charging_radius
+    max_linear:            5.0    # m/s — maximum forward speed
+    max_angular:           5.0    # rad/s — maximum rotation speed
+    k_linear:              0.4    # proportional gain: forward speed
+    k_angular:             1.6    # proportional gain: rotation speed
+    turn_only_angle:       0.25   # rad (~14°) — align before driving
+    drive_angle:           0.40   # rad (~23°) — re-enter turn mode if exceeded
+    control_hz:            20.0   # Hz — control loop rate

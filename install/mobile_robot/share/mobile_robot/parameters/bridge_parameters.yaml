@@ -55,7 +55,7 @@
   direction: ROS_TO_GZ
 
 # gz world truth
-- ros_topic_name: /gt_odom
+- ros_topic_name: /odom_gt
   gz_topic_name: /model/differential_drive_robot/odometry
   ros_type_name: nav_msgs/msg/Odometry
   gz_type_name: gz.msgs.Odometry
@@ -80,7 +80,6 @@
   ros_type_name: geometry_msgs/msg/Twist
   gz_type_name: gz.msgs.Twist
   direction: ROS_TO_GZ
-
 
 
 
