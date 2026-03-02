@@ -42,7 +42,7 @@ def main(args=None):
     controlVel = Twist()
 
     # components of the linear velocity vector
-    controlVel.linear.x= 4.0;
+    controlVel.linear.x= -10.0;
     controlVel.linear.y=0.0;
     controlVel.linear.z=0.0;
     # components of the angular velocity vector
@@ -50,7 +50,7 @@ def main(args=None):
     # matters, and this is angular velocity around the axis perpendicular to the computer screen
     controlVel.angular.x=0.0;
     controlVel.angular.y=0.0;
-    controlVel.angular.z=8.0;
+    controlVel.angular.z=0.0;
 
     # create a node
     TestNode=Node("test_node")
@@ -72,7 +72,7 @@ def main(args=None):
         # this is a non blocking statement in contrast to rclpy.spin()
         rclpy.spin_once(TestNode)
         # sleep for the specified period
-        rate.speed()
+        rate.sleep()
 
     # destroy the node
     TestNode.destroy_node()

@@ -4,34 +4,52 @@
 <!-- Made by Aleksander Haber                                      -->
 <!-- See the license!                                              -->
 <!-- This code is teh ownership of Aleksander Haber                -->
-<-- ########################################################       -->
+<!-- ########################################################      -->
 <robot>
 <!-- Everything is described here -->
 <!-- https://classic.gazebosim.org/tutorials?tut=ros_urdf&cat=connect_ros -->
 <!-- mu1 and mu2 are friction coefficients -->
 
-<gazebo reference="body_link"
+<gazebo reference="body_link">
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
     <material>Gazebo/Red</material>
 </gazebo>
 
-<gazebo reference="wheel1_link"
-    <mu1>0.2</mu1>
-    <mu2>0.2</mu2>
+<gazebo reference="wheel1_link">
+    <mu1>2.0</mu1>
+    <mu2>2.0</mu2>
     <material>Gazebo/Yellow</material>
 </gazebo>
 
-<gazebo reference="wheel2_link"
-    <mu1>0.2</mu1>
-    <mu2>0.2</mu2>
+<gazebo reference="wheel2_link">
+    <mu1>2.0</mu1>
+    <mu2>2.0</mu2>
     <material>Gazebo/Yellow</material>
 </gazebo>
 
-<gazebo reference="caster_link"
+<gazebo reference="caster_link">
+  <mu1>0.8</mu1>
+  <mu2>0.8</mu2>
+  <material>Gazebo/Yellow</material>
+</gazebo>
+
+<gazebo reference="top_ball_link">
     <mu1>0.000002</mu1>
     <mu2>0.000002</mu2>
-    <material>Gazebo/Blue</material>
+    <material>Gazebo/Black</material>
+</gazebo>
+
+<gazebo reference="left_ear_link">
+    <mu1>0.000002</mu1>
+    <mu2>0.000002</mu2>
+    <material>Gazebo/Black</material>
+</gazebo>
+
+<gazebo reference="right_ear_link">
+    <mu1>0.000002</mu1>
+    <mu2>0.000002</mu2>
+    <material>Gazebo/Black</material>
 </gazebo>
 
 
@@ -51,20 +69,29 @@
         <left_joint>wheel2_joint</left_joint>
 
     <!-- kinematics -->
-        <wheel_separation>${2*s4}</wheel_separation>
-        <wheel_diameter>${2*r}</wheel_diameter>
+        <wheel_separation>0.7</wheel_separation>
+        <wheel_diameter>0.3</wheel_diameter>
 
     <!-- limits -->
         <max_linear_acceleration>10</max_linear_acceleration>
+        <max_angular_acceleration>10</max_angular_acceleration>
+        <max_angular_velocity>2.0</max_angular_velocity>
 
     <!-- topic, frames, and odometry -->
         <topic>cmd_vel</topic>
         <tf_topic>/tf</tf_topic>
         <odom_topic>odom</odom_topic>
         <frame_id>odom</frame_id>
-        <child_frame_id>base_footprint </child_frame_id>
+        <child_frame_id>base_footprint</child_frame_id>
         <odom_publisher_frequency>30</odom_publisher_frequency>
 
+</plugin>
+
+<!-- Head Joint Position Controller -->
+
+<plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+  <joint_name>top_ball_joint</joint_name>
+  <topic>head_yaw_cmd</topic>
 </plugin>
 
 <!-- Joint state publisher                                   -->
@@ -73,8 +100,88 @@
     <topic>joint_states</topic> <!--from <ros><remapping> -->
     <joint_name>wheel1_joint</joint_name>
     <joint_name>wheel2_joint</joint_name>
+    <joint_name>top_ball_joint</joint_name>
+</plugin>
+
+<plugin filename="gz-sim-odometry-publisher-system"
+        name="gz::sim::systems::OdometryPublisher">
+  <odom_frame>map</odom_frame>
+  <robot_base_frame>base_link</robot_base_frame>
+  <dimensions>2</dimensions>
+  <publish_frequency>30</publish_frequency>
 </plugin>
 
 </gazebo>
+
+
+<!-- Lidar sensor               -->
+
+<gazebo>
+    <plugin 
+        filename="gz-sim-sensors-system"
+        name="gz::sim::systems::Sensors">
+        <render_engine>ogre2</render_engine>
+    </plugin>
+</gazebo>
+
+<gazebo reference="lidar_link">
+    <sensor name="gpu_lidar" type="gpu_lidar">
+        <pose relative_to='lidar_link'>0 0 0 0 0 0</pose>
+
+        <topic>scan</topic>
+        <frame_id>lidar_link</frame_id>
+        <update_rate>5</update_rate>
+
+        <lidar>
+            <scan>
+                <horizontal>
+                    <samples>720</samples>
+                    <resolution>1</resolution>
+                    <min_angle>-3.14</min_angle>
+                    <max_angle>3.14</max_angle>
+                </horizontal>
+            </scan>
+
+            <range>
+                <min>0.01</min>
+                <max>20.0</max>
+                <resolution>0.01</resolution>
+            </range>
+
+            <noise>
+                <type>gaussian</type>
+                <mean>0.0</mean>
+                <stddev>0.001</stddev>
+            </noise>
+        </lidar>
+
+        <always_on>1</always_on>
+        <visualize>1</visualize>
+    </sensor>
+
+    <!-- Battery plugin                                             -->
+    <!-- capacity: total charge in Ah                               -->
+    <!-- power_load: idle draw in Watts (constant discharge)        -->
+    <!-- Motor discharge is handled by the ROS2 battery node        -->
+
+    <plugin filename="gz-sim-linearbatteryplugin-system"
+        name="gz::sim::systems::LinearBatteryPlugin">
+            <battery_name>main_battery</battery_name>
+            <voltage>12.0</voltage>
+            <open_circuit_voltage_constant_coef>12.0</open_circuit_voltage_constant_coef>
+            <open_circuit_voltage_linear_coef>-2.0</open_circuit_voltage_linear_coef>
+            <initial_charge>10.0</initial_charge>
+            <capacity>10.0</capacity>
+            <resistance>0.1</resistance>
+            <smooth_current_tau>2.0</smooth_current_tau>
+            <power_load>2.0</power_load>
+            <start_on_motion>false</start_on_motion>
+            <fix_issue_225>true</fix_issue_225>
+            <topic>battery_state</topic>
+    </plugin>
+
+</gazebo>
+
+
 
 </robot>

@@ -1,0 +1,121 @@
+running egg_info
+writing build/mobile_robot/mobile_robot.egg-info/PKG-INFO
+writing dependency_links to build/mobile_robot/mobile_robot.egg-info/dependency_links.txt
+writing entry points to build/mobile_robot/mobile_robot.egg-info/entry_points.txt
+writing requirements to build/mobile_robot/mobile_robot.egg-info/requires.txt
+writing top-level names to build/mobile_robot/mobile_robot.egg-info/top_level.txt
+reading manifest file 'build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+writing manifest file 'build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+running build
+running build_py
+copying mobile_robot/identify.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/guest_approach.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/identify_move_supervisor.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/rotate_90_degrees.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/battery_node.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/identify2.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/simple_guest_approach.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/identify3.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/move.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/bounce_2cylinders.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/spin_head.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/guest_find.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/move5.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/avoid_while_interact.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/bounce_cylinder.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/identify5.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/simple_guest_find.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/square_driver_with_logging.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/move2.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+copying mobile_robot/simple_avoid_obstacle.py -> /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot
+running install
+running install_lib
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/identify.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/guest_approach.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/identify_move_supervisor.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/rotate_90_degrees.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/battery_node.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/identify2.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/simple_guest_approach.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/identify3.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/move.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/bounce_2cylinders.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/spin_head.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/guest_find.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/move5.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/avoid_while_interact.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/bounce_cylinder.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/identify5.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/simple_guest_find.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/square_driver_with_logging.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/move2.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+copying /home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/build/lib/mobile_robot/simple_avoid_obstacle.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/identify.py to identify.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/guest_approach.py to guest_approach.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/identify_move_supervisor.py to identify_move_supervisor.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/rotate_90_degrees.py to rotate_90_degrees.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/battery_node.py to battery_node.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/identify2.py to identify2.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/simple_guest_approach.py to simple_guest_approach.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/identify3.py to identify3.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/move.py to move.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/bounce_2cylinders.py to bounce_2cylinders.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/spin_head.py to spin_head.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/guest_find.py to guest_find.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/move5.py to move5.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/avoid_while_interact.py to avoid_while_interact.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/bounce_cylinder.py to bounce_cylinder.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/identify5.py to identify5.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/simple_guest_find.py to simple_guest_find.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/square_driver_with_logging.py to square_driver_with_logging.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/move2.py to move2.cpython-312.pyc
+byte-compiling /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/simple_avoid_obstacle.py to simple_avoid_obstacle.cpython-312.pyc
+running install_data
+copying launch/gazebo_2moving_cyl.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying launch/interaction_logic.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying launch/gazebo_model.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying launch/simple_avoid_obstacle.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying launch/gazebo_model_moving_cylinder.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying launch/gazebo_model_with_cylinders.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying launch/guest_find_approach.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying launch/gazebo_model2.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying launch/simple_guest_find_approach.launch.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/launch
+copying model/robot.xacro -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/model
+copying model/charging_stations.sdf -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/model
+copying model/robot_test.xacro -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/model
+copying model/robot.gazebo -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/model
+copying parameters/bridge_parameters.yaml -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/parameters
+copying parameters/battery_tunable_parameters.yaml -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/parameters
+copying parameters/ekf_global.yaml -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/parameters
+creating /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/worlds
+copying worlds/arena.sdf -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/worlds
+copying worlds/arena_long.sdf -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/worlds
+copying worlds/arena_moving_cylinder.sdf -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/worlds
+copying worlds/arena_2moving_cylinders.sdf -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/worlds
+copying worlds/arena_with_cylinders.py -> /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/share/mobile_robot/worlds
+running install_egg_info
+removing '/home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info' (and everything under it)
+Copying build/mobile_robot/mobile_robot.egg-info to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info
+running install_scripts
+Installing avoid_while_interact script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing battery_node script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing bounce_2cylinders script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing bounce_cylinder script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing find script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing guest_approach script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing guest_find script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing identify2 script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing identify3 script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing identify5 script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing identify_move_supervisor script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing move script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing move2 script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing move5 script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing rotate_90_degrees script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing simple_avoid_obstacle script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing simple_guest_approach script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing simple_guest_find script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing spin_head script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing square_driver_with_logging script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+Installing test_publisher script to /home/russe/Autonomous_Robot/src/mobile_robot/install/mobile_robot/lib/mobile_robot
+writing list of installed files to '/home/russe/Autonomous_Robot/src/mobile_robot/build/mobile_robot/install.log'
