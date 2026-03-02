@@ -1,0 +1,29 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <model name="anna_person">
+    <static>true</static>
+
+    <!-- Change pose to where you want Anna to appear -->
+    <pose>2 0 0 0 0 0</pose>
+
+    <link name="link">
+      <visual name="anna_visual">
+        <geometry>
+          <mesh>
+            <uri>model://person/anna/anna.gltf</uri>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <!-- Keep collision simple for stability -->
+      <collision name="collision">
+        <geometry>
+          <cylinder>
+            <radius>0.25</radius>
+            <length>1.6</length>
+          </cylinder>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

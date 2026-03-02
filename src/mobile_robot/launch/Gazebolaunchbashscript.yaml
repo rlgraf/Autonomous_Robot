@@ -1,0 +1,23 @@
+# ===============================
+# ROS2 + Gazebo Launch Script
+# ===============================
+
+cd /home/corelab/Autonomous_Robot || exit 1
+
+# Source ROS 2
+source /opt/ros/jazzy/setup.bash
+
+# Build workspace (safe even if already built)
+
+
+rm -rf build install log
+colcon build --symlink-install
+
+source install/setup.bash
+
+ros2 launch mobile_robot gazebo_model.launch.py
+
+
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch mobile_robot gazebo_model2.launch.py

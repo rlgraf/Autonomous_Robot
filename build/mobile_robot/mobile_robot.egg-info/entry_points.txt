@@ -1,4 +1,0 @@
-[console_scripts]
-battery_node = mobile_robot.battery_node:main
-simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main
-test_publisher = mobile_robot.test:main

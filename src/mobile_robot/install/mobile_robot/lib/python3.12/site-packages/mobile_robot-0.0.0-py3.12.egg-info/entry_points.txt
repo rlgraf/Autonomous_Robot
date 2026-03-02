@@ -1,2 +1,0 @@
-[console_scripts]
-publisher = mobile_robot.test:main

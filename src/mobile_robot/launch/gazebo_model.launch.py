@@ -1,170 +1,142 @@
 ###############################################################################
 # ROS2 and Gazebo Launch File of the differential drive robot
-# Author: Aleksander Haber
-# This code is the ownership of Aleksander Haber
-# Read the license!
 ###############################################################################
 
 import os
+import yaml
+import xacro
+
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, TimerAction, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
-from launch.actions import RegisterEventHandler
-from launch.event_handlers import OnProcessStart, OnProcessExit
 from launch_ros.actions import Node
-import yaml
-import xacro
-
 
 def generate_launch_description():
-    # set_qt_platform = SetEnvironmentVariable('QT_QPA_PLATFORM', 'xcb')
-    # set_render_engine = SetEnvironmentVariable('GZ_RENDER_ENGINE_NAME', 'ogre')
 
-    # this name has to match the robor name in the Xacro file
-    robotXacroName='differential_drive_robot'
-
-    # this is the name of our package, at the same time this is the name of the 
-    # folder that will be used to define the paths
+    robotXacroName = 'differential_drive_robot'
     namePackage = 'mobile_robot'
 
-    # this is a relative path to the xacro file defining the model
+    pkg_share = get_package_share_directory(namePackage)
     modelFileRelativePath = 'model/robot.xacro'
-
-    # uncomment this if you want to define your own empty world model
-    # however, then you have to create empty_world.world
-    # this is a relative path to the Gazebo world file
-    # worldFileRelativePath = 'model/empty_world.world'
-
-    # this is the absolute path to the model
-    pathModelFile = os.path.join(get_package_share_directory(namePackage),
-                                 modelFileRelativePath)
-
-    # uncomment this if you ar using your own world model
-    # this is the absolute path to the world model
-    # pathWorldFile = os.path.join(get_package_share_directory(namePackage), worldFileRelativePath)
-
-    # get the robot description from the xacro model file
+    pathModelFile = os.path.join(pkg_share, modelFileRelativePath)
+    
+    # Robot description from xacro
     robotDescription = xacro.process_file(pathModelFile).toxml()
 
+    # Gazebo launch (DEFAULT world)
+    gazebo_rosPackageLaunch = PythonLaunchDescriptionSource(
+        os.path.join(
+            get_package_share_directory('ros_gz_sim'),
+            'launch',
+            'gz_sim.launch.py'
+        )  
+    )
 
-    # this is the launch file from the gazebo_ros package
-    gazebo_rosPackageLaunch=PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ros_gz_sim'),
-                                                                        'launch', 'gz_sim.launch.py'))
-    
-    
-    # this is the launch description
-    
-    # this is if you are using your own world model
-    # gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch, launch_arguments={'gz_args': ['-r -v -v4 ', pathWorldFile], 'on_exit_shutdown': 'true'}.items())
-    
-    # this is if you are using an empty world model
-    # gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch,
-    #                                       launch_arguments={'gz_args': '-r empty.sdf',
-    #                                                         'on_exit_shutdown': 'true'}.items())                                                
-    # AFTER
-    gazeboLaunch=IncludeLaunchDescription(gazebo_rosPackageLaunch,
-                                          launch_arguments={
-                                            'gz_args': '-r -v -v4 default.sdf',
-                                            'on_exit_shutdown': 'true'
-                                        }.items())
+    arena2_sdf = "/home/corelab/Autonomous_Robot/src/mobile_robot/world/arena2.sdf"
+    print("Loading world file:", arena2_sdf, "exists:", os.path.exists(arena2_sdf))
 
-    # Gazebo node
+    gazeboLaunch = IncludeLaunchDescription(
+        gazebo_rosPackageLaunch,
+        launch_arguments={
+            'gz_args': f'-r {arena2_sdf}',
+            'on_exit_shutdown': 'true'
+        }.items()
+    )
+   
+
+    # Spawn robot
     spawnModelNodeGazebo = Node(
         package='ros_gz_sim',
         executable='create',
         arguments=[
             '-name', robotXacroName,
-            '-topic', 'robot_description'
+            '-topic', 'robot_description',
+            '-x', '-9.0',
+            '-y', '0.0',
+            '-z', '0.0',
         ],
         output='screen'
     )
 
-
-    # Robot State Publisher Node
+    # Robot State Publisher
     nodeRobotStatePublisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         output='screen',
-        parameters=[{'robot_description': robotDescription,
-        'use_sim_time': True}]
+        parameters=[{
+            'robot_description': robotDescription,
+            'use_sim_time': True
+        }]
     )
 
-    # this is very important so we can control the robot from ROS2
+    # Bridge
     bridge_params = os.path.join(
-    get_package_share_directory(namePackage),
-    'parameters',
-    'bridge_parameters.yaml'
+        pkg_share,
+        'parameters',
+        'bridge_parameters.yaml'
     )
 
     start_gazebo_ros_bridge_cmd = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
-        '--ros-args',
-        '-p',
-        f'config_file:={bridge_params}',
-    ],
-    output='screen',
+            '--ros-args',
+            '-p',
+            f'config_file:={bridge_params}',
+        ],
+        output='screen',
     )
 
-
+    # Battery parameters
     params_battery_file = os.path.join(
-        get_package_share_directory(namePackage),
-        'parameters', 'battery_tunable_parameters.yaml'
+        pkg_share,
+        'parameters',
+        'battery_tunable_parameters.yaml'
     )
+
     with open(params_battery_file, 'r') as f:
         battery_params = yaml.safe_load(f)
+
+    ros_params = battery_params['battery_node']['ros__parameters']
+
     charging_stations = [
-        tuple(s) for s in battery_params['battery_node']['ros__parameters']['charging_stations']
+        tuple(s) for s in ros_params.get('charging_stations', [])
     ]
 
+    charging_radius = float(
+        ros_params.get('charging_radius', 0.5)
+    )
+
+    # Battery node
     start_battery_cmd = Node(
         package='mobile_robot',
         executable='battery_node',
         name='battery_node',
         output='screen',
-        parameters=[params_battery_file],   # loads everything automatically
+        parameters=[params_battery_file],
     )
 
-    # radius comes straight from the YAML
-    charging_radius = battery_params['battery_node']['ros__parameters']['charging_radius']
-
-        # ── Load charging-station SDF template from model file ─────────────── #
+    # Charging station template
     station_sdf_template_path = os.path.join(
-        get_package_share_directory(namePackage),
-        'model', 'charging_stations.sdf'
+        pkg_share,
+        'model',
+        'charging_stations.sdf'
     )
+
     with open(station_sdf_template_path, 'r') as f:
         station_sdf_template = f.read()
 
     spawn_station_nodes = []
+
     for i, (sx, sy) in enumerate(charging_stations):
-        sdf_string = (station_sdf_template
-                      .replace('STATION_ID',    str(i))
-                      .replace('STATION_RADIUS',str(charging_radius)))
-    #     sdf_string = f"""<?xml version="1.0"?>
-    # <sdf version="1.8">
-    #     <model name="charging_station_{i}">
-    #         <static>true</static>
-    #         <link name="pad_link">
-    #             <visual name="pad_visual">
-    #                 <geometry>
-    #                     <cylinder>
-    #                         <radius>{charging_radius}</radius>
-    #                         <length>0.02</length>
-    #                     </cylinder>
-    #                 </geometry>
-    #                 <material>
-    #                     <ambient>0 0.8 0 1</ambient>
-    #                     <diffuse>0 0.8 0 1</diffuse>
-    #                     <specular>0 0.1 0 1</specular>
-    #                 </material>
-    #             </visual>
-    #         </link>
-    #     </model>
-    # </sdf>"""
+
+        sdf_string = (
+            station_sdf_template
+            .replace('STATION_ID', str(i))
+            .replace('STATION_RADIUS', str(charging_radius))
+        )
 
         spawn_station_nodes.append(
             Node(
@@ -173,69 +145,52 @@ def generate_launch_description():
                 arguments=[
                     '-string', sdf_string,
                     '-name', f'charging_station_{i}',
-                    '-x', str(sx),
-                    '-y', str(sy),
+                    '-x', str(float(sx)),
+                    '-y', str(float(sy)),
                     '-z', '0.01',
                 ],
                 output='screen'
             )
-            
         )
-    
-    # # here we create an empty launch description object
-    # launchDescriptionObject = LaunchDescription()
-    # launchDescriptionObject.add_action(SetEnvironmentVariable('QT_QPA_PLATFORM','xcb'))
-    # # we add gazeboLaunch
-    # # launchDescriptionObject.add_action(set_qt_platform)
-    # # launchDescriptionObject.add_action(set_render_engine)
-    # launchDescriptionObject.add_action(gazeboLaunch)
-    # launchDescriptionObject.add_action(nodeRobotStatePublisher)
-    # # we add the two nodes
-    # launchDescriptionObject.add_action(
-    #     TimerAction(
-    #         period=5.0,
-    #         actions = [spawnModelNodeGazebo]
-    #         )
-    # )
-    # launchDescriptionObject.add_action(
-    #     TimerAction(
-    #         period=6.0,
-    #         actions = [start_gazebo_ros_bridge_cmd]
-    #         )
-    # )   
-    # # launchDescriptionObject.add_action(start_gazebo_ros_bridge_cmd)
-    # return launchDescriptionObject
 
-        # ------------------------------------------------------------------ #
-    # Launch description                                                   #
-    # Spawn is delayed 5s to give Gazebo time to fully initialize         #
-    # ------------------------------------------------------------------ #
+    # Person model spawning
+    person_model_sdf_path = os.path.join(
+        pkg_share,
+        'model',
+        'person',
+        'model.sdf'
+    )
+
+    # Ensure Gazebo can resolve model://person URIs
+    set_gz_resource_path = SetEnvironmentVariable(
+        name='GZ_SIM_RESOURCE_PATH',
+        value=os.path.join(pkg_share, 'model')
+    )
+
     return LaunchDescription([
-        # Environment must be set before Gazebo launches
-        # SetEnvironmentVariable('QT_QPA_PLATFORM', 'xcb'),
-        
-        # Start Gazebo and robot state publisher immediately
+
+        set_gz_resource_path,
+
         gazeboLaunch,
         nodeRobotStatePublisher,
 
-        # Wait 5 seconds then spawn the robot
         TimerAction(
-            period=5.0,           
+            period=4.0,
             actions=[spawnModelNodeGazebo]
         ),
-        
-        # Wait 6 seconds then start the bridge (after spawn)
+
         TimerAction(
-            period=6.0,
+            period=4.5,
             actions=[start_gazebo_ros_bridge_cmd]
         ),
+
         TimerAction(
-            period=7.0,   # just after bridge at 15s
+            period=5.0,
             actions=[start_battery_cmd]
         ),
+
         TimerAction(
-            period=8.0,  # stagger spawn of recharge stations
+            period=5.5,
             actions=[*spawn_station_nodes]
         ),
-
     ])

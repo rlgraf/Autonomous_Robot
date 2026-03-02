@@ -1,6 +1,21 @@
+# ROS2 / Colcon
 build/
 install/
 log/
-*.pyc
+
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 *.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# VSCode
+.vscode/
+
+# Mac
+.DS_Store
