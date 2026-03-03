@@ -26,7 +26,7 @@ MAX_CLUSTER_POINTS      = 80     # more  → wall / large surface, discard
 MIN_CLUSTER_WIDTH       = 0.05   # m  – minimum bounding width of a valid object
 MAX_CLUSTER_WIDTH       = 1.2    # m  – wider → wall segment, discard
 MIN_RANGE               = 0.15   # m  – ignore very close artefacts
-MAX_RANGE               = 8.0    # m  – ignore far noise
+MAX_RANGE               = 12.0    # m  – ignore far noise
 WALL_RESIDUAL_THRESH    = 0.01   # m  – line-fit residual below this → wall
 MAX_RANGE_VARIANCE = 1.0   # m – max allowed difference between min and max range in a cluster
 # ─────────────────────────────────────────────────────────────────────────────

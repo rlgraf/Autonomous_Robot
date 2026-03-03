@@ -36,8 +36,9 @@ battery_node:
     # Charging station positions [[x1,y1], [x2,y2], ...]
     charging_stations:
       - [0.0, 0.0]
-      - [5.0, 3.0]
-      - [-20.0, -20.0]
+      - [29.0, 4.0]
+      - [29.0, -4.0]
+      - [-29.0, -4.0]
 
       # ─────────────────────────────────────────────────────────────────────────────
 # Auto Recharge Navigation
@@ -55,8 +56,8 @@ auto_recharge_node:
   ros__parameters:
     low_battery_threshold: 0.25   # fraction (0–1); start homing below this
     arrived_radius:        0.25   # m  — slightly < charging_radius
-    max_linear:            5.0    # m/s — maximum forward speed
-    max_angular:           5.0    # rad/s — maximum rotation speed
+    max_linear:            0.5    # m/s — maximum forward speed
+    max_angular:           0.8    # rad/s — maximum rotation speed
     k_linear:              0.4    # proportional gain: forward speed
     k_angular:             1.6    # proportional gain: rotation speed
     turn_only_angle:       0.25   # rad (~14°) — align before driving

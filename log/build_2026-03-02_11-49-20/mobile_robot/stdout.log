@@ -1,0 +1,48 @@
+running egg_info
+writing ../../build/mobile_robot/mobile_robot.egg-info/PKG-INFO
+writing dependency_links to ../../build/mobile_robot/mobile_robot.egg-info/dependency_links.txt
+writing entry points to ../../build/mobile_robot/mobile_robot.egg-info/entry_points.txt
+writing requirements to ../../build/mobile_robot/mobile_robot.egg-info/requires.txt
+writing top-level names to ../../build/mobile_robot/mobile_robot.egg-info/top_level.txt
+reading manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+writing manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+running build
+running build_py
+copying mobile_robot/identify6.py -> /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot
+running install
+running install_lib
+copying /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot/identify6.py -> /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+byte-compiling /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/identify6.py to identify6.cpython-312.pyc
+running install_data
+copying parameters/battery_tunable_parameters.yaml -> /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/parameters
+copying worlds/arena2.py -> /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/worlds
+running install_egg_info
+removing '/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info' (and everything under it)
+Copying ../../build/mobile_robot/mobile_robot.egg-info to /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info
+running install_scripts
+Installing auto_recharge_node script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing avoid_while_interact script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing battery_node script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing bounce_2cylinders script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing bounce_cylinder script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing find script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing guest_approach script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing guest_find script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing identify2 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing identify3 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing identify5 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing identify6 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing identify_move_supervisor script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing move script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing move2 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing move5 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing move6 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing rotate_90_degrees script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing simple_avoid_obstacle script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing simple_guest_approach script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing simple_guest_find script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing soft_obstacle_avoidance_node script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing spin_head script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing square_driver_with_logging script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+Installing test_publisher script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+writing list of installed files to '/home/russe/Autonomous_Robot/build/mobile_robot/install.log'

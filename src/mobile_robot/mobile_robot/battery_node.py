@@ -79,7 +79,7 @@ class BatteryNode(Node):
         self._init_timer = self.create_timer(0.5, self._lookup_station_ids)
 
         # State
-        self._charge_ah       = self._capacity* 0.30  # current charge in Ah
+        self._charge_ah       = self._capacity* 0.28 # current charge in Ah
         self._linear_vel      = 0.0
         self._angular_vel     = 0.0
         self._pos_x           = 0.0

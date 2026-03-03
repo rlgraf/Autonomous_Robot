@@ -25,7 +25,7 @@ from std_msgs.msg import Float32MultiArray, Bool
 
 # ── Tunable parameters ────────────────────────────────────────────────────────
 STOP_DISTANCE     = 1.0    # m    – stop this far from the object centroid
-ANGULAR_SPEED     = 0.4    # rad/s – rotation speed
+ANGULAR_SPEED     = 0.5    # rad/s – rotation speed
 LINEAR_SPEED      = 0.25   # m/s  – forward travel speed
 ANGLE_TOL         = 0.05   # rad  – heading error considered "aligned"
 DIST_TOL          = 0.20   # m    – remaining distance considered "arrived"
