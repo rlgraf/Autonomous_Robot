@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="charging_station_STATION_ID">
+    <static>true</static>
+
+    <!-- Charging pad disc — color is overlaid at runtime by battery_node via gz markers -->
+    <!-- Default visual: grey = idle/available -->
+    <link name="pad_link">
+      <visual name="pad_visual">
+        <geometry>
+          <cylinder>
+            <radius>STATION_RADIUS</radius>
+            <length>0.02</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.4 0.4 0.4 0.5</ambient>
+          <diffuse>0.5 0.5 0.5 0.5</diffuse>
+          <specular>0.1 0.9 0.1 0.5</specular>
+        </material>
+      </visual>
+    </link>
+
+  </model>
+</sdf>
