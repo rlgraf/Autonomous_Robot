@@ -325,12 +325,15 @@
 <!-- START: Ball on top of chassis (visual + collision)            -->
 <!-- ###########################################################   -->
 
-<joint name="top_ball_joint" type="fixed">
+<joint name="top_ball_joint" type="continuous">
   <parent link="body_link"/>
   <child link="top_ball_link"/>
-  <!-- Top of chassis is at z = s1 + b/2, then add the ball radius -->
   <origin xyz="0 0 ${s1 + b/2 + r_ball}" rpy="0 0 0"/>
+  <axis xyz="0 0 1"/>
+  <limit effort="5.0" velocity="2.0"/>
+  <dynamics damping="0.2" friction="0.0"/>
 </joint>
+
 
 <link name="top_ball_link">
   <visual>
@@ -416,6 +419,45 @@
 
 <!-- ###########################################################   -->
 <!-- END: Right Ear (visual + collision)                                   -->
+<!-- ###########################################################   -->
+
+<!-- ###########################################################   -->
+<!-- START: LIDAR            -->
+<!-- ###########################################################   -->
+
+<joint name="lidar_joint" type="fixed">
+    <origin xyz="0.0 0 ${b+r}" rpy="0 0 0"/>
+    <parent link="body_link"/>
+    <child link="lidar_link"/>
+    <axis xyz="0 1 0" rpy="0 0 0"/>
+</joint>
+
+<link name='lidar_link'>
+    <visual>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.1"/>
+      </geometry>
+    </visual>
+
+    <collision name='collision'>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.1"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <mass value="1e-6"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0"
+               iyy="1e-6" iyz="0" izz="1e-6"
+      />
+    </inertial>
+</link>
+
+<!-- ###########################################################   -->
+<!-- END: LIDAR            -->
 <!-- ###########################################################   -->
 
 
