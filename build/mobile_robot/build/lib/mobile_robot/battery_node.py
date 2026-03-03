@@ -25,7 +25,7 @@ DEFAULTS = {
     'battery_voltage'     : 12.0,
     'publish_rate_hz'     : 10.0,
     'charge_rate_a'       : 2.0,
-    'charging_radius'     : 0.5,
+    'charging_radius'     : 0.75,
     'stationary_thresh'   : 0.05,
     # 'charging_stations'   : [0.0, 0.0],
 }

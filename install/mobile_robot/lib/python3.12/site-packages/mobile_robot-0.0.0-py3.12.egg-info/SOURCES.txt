@@ -23,7 +23,6 @@ mobile_robot/__init__.py
 mobile_robot/auto_recharge_node.py
 mobile_robot/avoid_while_interact.py
 mobile_robot/battery_node.py
-mobile_robot/bounce_2cylinders.py
 mobile_robot/bounce_cylinder.py
 mobile_robot/guest_approach.py
 mobile_robot/guest_find.py
@@ -59,7 +58,6 @@ test/test_flake8.py
 test/test_pep257.py
 worlds/arena.sdf
 worlds/arena2.py
-worlds/arena_2moving_cylinders.sdf
 worlds/arena_long.sdf
 worlds/arena_moving_cylinder.sdf
 worlds/arena_with_cylinders.py

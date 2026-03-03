@@ -10,7 +10,7 @@ battery_node:
 
     # Charging
     charge_rate_a: 20.0
-    charging_radius: 0.5
+    charging_radius: 0.75
     stationary_thresh: 0.05
 
 
@@ -35,10 +35,11 @@ battery_node:
 
     # Charging station positions [[x1,y1], [x2,y2], ...]
     charging_stations:
-      - [0.0, 0.0]
-      - [29.0, 4.0]
-      - [29.0, -4.0]
-      - [-29.0, -4.0]
+      - [0, 4]
+      - [0, -4]
+      - [49.0, 4.0]
+      - [49.0, -4.0]
+      - [-49.0, -4.0]
 
       # ─────────────────────────────────────────────────────────────────────────────
 # Auto Recharge Navigation
