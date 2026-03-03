@@ -144,6 +144,14 @@ class ObjectNavigator(Node):
             self.get_logger().info(
                 'Battery recharged - resuming guest interaction'
             )
+            self.visited.clear()
+            self.get_logger().info(
+                'Cleared visited locations - starting fresh exploration'
+            )
+            self.state = self.SEARCHING
+            self.target_wx = None 
+            self.target_wy = None
+            self.get_logger().info('Reset navigation state - will find nearest object from current position')
 
     # ── Control loop (timer) ───────────────────────────────────────────────────
     def control_loop(self):

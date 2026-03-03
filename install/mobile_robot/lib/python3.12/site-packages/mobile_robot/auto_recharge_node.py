@@ -47,7 +47,7 @@ class AutoRechargeNode(Node):
         # ── Declare parameters (values come from battery_tunable_parameters.yaml) ──
         self.declare_parameter('low_battery_threshold', 0.25)
         self.declare_parameter('arrived_radius',        0.60)
-        self.declare_parameter('max_linear',            0.15)
+        self.declare_parameter('max_linear',            0.25)
         self.declare_parameter('max_angular',           0.5)
         self.declare_parameter('k_linear',              0.4)
         self.declare_parameter('k_angular',             1.6)
