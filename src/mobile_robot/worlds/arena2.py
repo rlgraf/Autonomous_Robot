@@ -16,7 +16,7 @@ CYL_H = 1.0          # same height as the arena walls
 
 # ── Placement rules ────────────────────────────────────────────────────────────
 WALL_MARGIN     = CYL_R + 1.25   # keep cylinders away from walls
-MIN_CYL_DIST    = CYL_R * 2 + 1  # cylinders don't touch each other
+MIN_CYL_DIST    = CYL_R * 2 + 1.25  # cylinders don't touch each other
 SPAWN_X         = 0.0           # robot spawns at the origin
 SPAWN_Y         = 0.0
 SPAWN_CLEARANCE = 1.5           # no cylinder within this radius of spawn

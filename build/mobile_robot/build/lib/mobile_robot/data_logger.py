@@ -135,10 +135,9 @@ class DataLoggerNode(Node):
                 writer.writerow([])  # Blank line
             
                 # Visited cylinders section
-                visited_list = sorted(list(self.visited_cylinders))
                 writer.writerow(['VISITED CYLINDERS'])
                 writer.writerow(['Visit #', 'X', 'Y'])
-                for i, (x, y) in enumerate(visited_list):
+                for i, (x, y) in enumerate(self.visited_cylinders):  # ← Remove sorted()
                     writer.writerow([i+1, f'{x:.3f}', f'{y:.3f}'])
         
             self.get_logger().info(f'✓ Data saved to {self.csv_file}')
