@@ -5,6 +5,9 @@
 # to avoid ROS2's C parser choking on nested lists (charging_stations) and
 # nested dicts (color_*).  Only flat scalar values are passed to each node.
 ###############################################################################
+###############################################################################
+# Auto Recharge Launch File
+###############################################################################
 
 import os
 import yaml
@@ -19,7 +22,6 @@ def generate_launch_description():
 
     pkg = get_package_share_directory('mobile_robot')
 
-    # ── Read both YAMLs in Python — never pass battery YAML as --params-file ──
     battery_yaml_path   = os.path.join(pkg, 'parameters', 'battery_tunable_parameters.yaml')
     avoidance_yaml_path = os.path.join(pkg, 'parameters', 'avoidance_parameters.yaml')
 
@@ -29,7 +31,6 @@ def generate_launch_description():
     bat  = battery_yaml['battery_node']['ros__parameters']
     rech = battery_yaml['auto_recharge_node']['ros__parameters']
 
-    # ── Scalar params for battery_node (no nested lists/dicts) ───────────────
     battery_node_params = {
         'use_sim_time':        True,
         'battery_capacity_ah': bat['battery_capacity_ah'],
@@ -41,26 +42,25 @@ def generate_launch_description():
         'charge_rate_a':       bat['charge_rate_a'],
         'charging_radius':     bat['charging_radius'],
         'stationary_thresh':   bat['stationary_thresh'],
-        # color arrays and charging_stations are loaded inside battery_node.py
-        # via yaml.safe_load() directly — not through ROS2 params
     }
 
-    # ── Scalar params for auto_recharge_node ─────────────────────────────────
     recharge_node_params = {
-        'use_sim_time':           True,
-        'low_battery_threshold':  rech['low_battery_threshold'],
-        'arrived_radius':         rech['arrived_radius'],
-        'max_linear':             rech['max_linear'],
-        'max_angular':            rech['max_angular'],
-        'k_linear':               rech['k_linear'],
-        'k_angular':              rech['k_angular'],
-        'turn_only_angle':        rech['turn_only_angle'],
-        'drive_angle':            rech['drive_angle'],
-        'control_hz':             rech['control_hz'],
-        # charging_stations loaded inside node via yaml.safe_load() — not ROS2 params
+        'use_sim_time':                  True,
+        'arrived_radius':                rech['arrived_radius'],
+        'max_linear':                    rech['max_linear'],
+        'max_angular':                   rech['max_angular'],
+        'k_linear':                      rech['k_linear'],
+        'k_angular':                     rech['k_angular'],
+        'full_speed_angle':              rech['full_speed_angle'],
+        'stop_drive_angle':              rech['stop_drive_angle'],
+        'control_hz':                    rech['control_hz'],
+        'return_mode':                   rech['return_mode'],
+        'low_battery_threshold':         rech['low_battery_threshold'],
+        'prediction_cruise_fraction':    rech['prediction_cruise_fraction'],
+        'prediction_turn_fraction':      rech['prediction_turn_fraction'],
+        'safety_margin_ah':              rech['safety_margin_ah'],
     }
 
-    # ── avoidance_parameters.yaml is all scalars — safe to pass directly ─────
     battery_node = Node(
         package='mobile_robot',
         executable='battery_node',
@@ -84,7 +84,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'use_sim_time': True},
-            avoidance_yaml_path,   # all scalars — safe for ROS2 parser
+            avoidance_yaml_path,
         ]
     )
 

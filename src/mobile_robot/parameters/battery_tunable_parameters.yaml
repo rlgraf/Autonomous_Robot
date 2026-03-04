@@ -2,7 +2,7 @@ battery_node:
   ros__parameters:
     # Battery
     battery_capacity_ah: 1.0
-    idle_drain_a: 1.0
+    idle_drain_a: 20.0
     move_drain_per_ms: 10.0
     turn_drain_per_rads: 5.0
     battery_voltage: 12.0
@@ -13,25 +13,24 @@ battery_node:
     charging_radius: 0.5
     stationary_thresh: 0.05
 
-
     # Charging station visual colors [r, g, b, a]
     # ambient  = color in shadow
     # diffuse  = main surface color in direct light
-    # emissive = glow color regardless of lighting (0 = no glow)
+    # specular = highlight color
     color_idle:
-      ambient:  [0.0, 0.8, 0.0, 1.0] # 
+      ambient:  [0.0, 0.8, 0.0, 1.0]
       diffuse:  [0.0, 0.8, 0.0, 1.0]
-      specular: [0.0, 0.8, 0.0, 1.0]   # no glow — station is inactive
+      specular: [0.0, 0.8, 0.0, 1.0]
 
     color_charging:
-      ambient:  [0.0, 0.0, 0.9, 1.0]  # 
+      ambient:  [0.0, 0.0, 0.9, 1.0]
       diffuse:  [0.0, 0.0, 0.9, 1.0]
-      specular: [0.0, 0.0, 0.9, 1.0]   # 
+      specular: [0.0, 0.0, 0.9, 1.0]
 
     color_full:
-      ambient:  [0.0, 0.4, 0.4, 0.2] # green
+      ambient:  [0.0, 0.4, 0.4, 0.2]
       diffuse:  [0.0, 0.9, 0.9, 0.2]
-      specular: [0.0, 1.0, 1.0, 1.0]   # slight green glow
+      specular: [0.0, 1.0, 1.0, 1.0]
 
     # Charging station positions [[x1,y1], [x2,y2], ...]
     charging_stations:
@@ -39,26 +38,52 @@ battery_node:
       - [5.0, 3.0]
       - [-20.0, -20.0]
 
-      # ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 # Auto Recharge Navigation
-# Tuning guide:
-#   low_battery_threshold  – fraction 0–1; robot starts homing below this level
-#   arrived_radius         – should be slightly larger than charging_radius above
-#   k_linear / k_angular   – proportional gains; increase for faster response,
-#                            decrease if the robot overshoots or oscillates
-#   turn_only_angle        – robot drives forward only once heading error is
-#                            smaller than this (radians)
-#   drive_angle            – hysteresis: re-enter turn-only mode if error grows
-#                            past this (must be > turn_only_angle)
+#
+# return_mode: 'threshold' | 'prediction'
+#
+#   threshold  – trigger when battery_pct < low_battery_threshold.
+#
+#   prediction – trigger when the estimated Ah needed to reach the nearest
+#                station exceeds current charge remaining.
+#                drain_per_metre is derived automatically from the battery
+#                node's own drain parameters (idle_drain_a, move_drain_per_ms,
+#                turn_drain_per_rads) — no manual tuning required.
+#
+#                prediction_cruise_fraction controls what fraction of max_linear
+#                is used as the assumed travel speed for the energy estimate.
+#                0.6 means the robot is assumed to travel at 60% of max speed,
+#                which accounts for acceleration, curves, and slow final approach.
+#                Increase toward 1.0 on open maps; decrease on cluttered maps.
+#
+#                prediction_turn_fraction is the fraction of max_angular assumed
+#                to be used for heading corrections during the trip.
+#                It models the turning cost: a value of 0.3 means the robot
+#                spends ~30% of max turn rate correcting its heading on average.
+#
+#                safety_margin_ah is a flat Ah buffer added on top of the
+#                predicted travel cost. It hedges against detours caused by
+#                obstacle avoidance, which add unplanned distance.
+#
+# full_speed_angle – heading error below which robot drives at full speed (rad)
+# stop_drive_angle – heading error above which robot stops translating (rad)
+#   Between the two, forward speed blends linearly from full → zero.
 # ─────────────────────────────────────────────────────────────────────────────
 auto_recharge_node:
   ros__parameters:
-    low_battery_threshold: 0.15   # fraction (0–1); start homing below this
-    arrived_radius:        0.25   # m  — slightly < charging_radius
-    max_linear:            5.0    # m/s — maximum forward speed
-    max_angular:           5.0    # rad/s — maximum rotation speed
+    arrived_radius:        0.15   # m
+    max_linear:            5.0    # m/s
+    max_angular:           5.0    # rad/s
     k_linear:              0.4    # proportional gain: forward speed
     k_angular:             1.6    # proportional gain: rotation speed
-    turn_only_angle:       0.25   # rad (~14°) — align before driving
-    drive_angle:           0.40   # rad (~23°) — re-enter turn mode if exceeded
-    control_hz:            20.0   # Hz — control loop rate
+    full_speed_angle:      0.20   # rad (~11°)
+    stop_drive_angle:      0.60   # rad (~34°)
+    control_hz:            20.0   # Hz
+
+    # Return-home trigger
+    return_mode:                'prediction'  # 'threshold' | 'prediction'
+    low_battery_threshold:       0.25        # fraction 0–1  (threshold mode only)
+    prediction_cruise_fraction:  0.6         # fraction of max_linear assumed for travel
+    prediction_turn_fraction:    0.3         # fraction of max_angular assumed for turns
+    safety_margin_ah:            0.1        # Ah flat buffer added to predicted cost
