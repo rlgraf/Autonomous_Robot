@@ -25,8 +25,8 @@ from std_msgs.msg import Float32MultiArray, Bool
 
 # ── Tunable parameters ────────────────────────────────────────────────────────
 STOP_DISTANCE     = 1.0    # m    – stop this far from the object centroid
-ANGULAR_SPEED     = 0.5    # rad/s – rotation speed
-LINEAR_SPEED      = 0.25   # m/s  – forward travel speed
+ANGULAR_SPEED     = 0.8    # rad/s – rotation speed
+LINEAR_SPEED      = 0.4   # m/s  – forward travel speed
 ANGLE_TOL         = 0.05   # rad  – heading error considered "aligned"
 DIST_TOL          = 0.20   # m    – remaining distance considered "arrived"
 DWELL_TIME        = 5.0    # s    – time to wait at the goal
@@ -77,6 +77,7 @@ class ObjectNavigator(Node):
 
         # Publishers / subscribers
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.visited_pub = self.create_publisher(Float32MultiArray, '/visited_cylinders', 10)
         self.create_subscription(Float32MultiArray, '/detected_objects',
                                  self.detection_callback, 10)
         self.create_subscription(Odometry, '/odom_gt',
@@ -251,6 +252,11 @@ class ObjectNavigator(Node):
                 f'{self.target_wy:.2f}) as visited — will not return.'
             )
             self.visited.append((self.target_wx, self.target_wy))
+            
+            visited_msg = Float32MultiArray()
+            visited_msg.data = [self.target_wx, self.target_wy]
+            self.visited_pub.publish(visited_msg)
+
             self.target_wx = None
             self.target_wy = None
             # Go to SEARCHING so the robot rotates and re-acquires

@@ -87,6 +87,15 @@ def main() -> None:
     for i, (x, y) in enumerate(pts):
         print(f"  cylinder_{i:02d}  ({x:+.2f}, {y:+.2f})")
 
+    import os
+    data_dir = os.path.expanduser('~/Autonomous_Robot/src/mobile_robot/data')
+    os.makedirs(data_dir, exist_ok=True)
+    cache_file = Path(data_dir) / "cylinder_positions.txt"
+    with open(cache_file, 'w') as f:
+        for x, y in pts:
+            f.write(f"{x},{y}\n")
+    print(f"Saved {len(pts)} cylinder positions to {cache_file}")
+
     cylinders_sdf = "\n".join(cylinder_block(i, x, y) for i, (x, y) in enumerate(pts))
 
     sdf = f"""<?xml version="1.0" ?>

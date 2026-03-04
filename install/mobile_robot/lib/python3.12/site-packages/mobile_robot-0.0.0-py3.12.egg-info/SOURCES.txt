@@ -24,6 +24,7 @@ mobile_robot/auto_recharge_node.py
 mobile_robot/avoid_while_interact.py
 mobile_robot/battery_node.py
 mobile_robot/bounce_cylinder.py
+mobile_robot/data_logger.py
 mobile_robot/guest_approach.py
 mobile_robot/guest_find.py
 mobile_robot/identify.py

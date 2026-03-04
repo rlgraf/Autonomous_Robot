@@ -1,0 +1,27 @@
+[0.015s] Invoking command in '/home/russe/Autonomous_Robot/build/gazebo_differential_drive_robot': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/russe/Autonomous_Robot/install/new_gazebo_robot:/home/russe/Autonomous_Robot/install/mobile_robot:/opt/ros/jazzy /usr/bin/cmake --build /home/russe/Autonomous_Robot/build/gazebo_differential_drive_robot -- -j8 -l8
+[0.180s] Invoked command in '/home/russe/Autonomous_Robot/build/gazebo_differential_drive_robot' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/russe/Autonomous_Robot/install/new_gazebo_robot:/home/russe/Autonomous_Robot/install/mobile_robot:/opt/ros/jazzy /usr/bin/cmake --build /home/russe/Autonomous_Robot/build/gazebo_differential_drive_robot -- -j8 -l8
+[0.187s] Invoking command in '/home/russe/Autonomous_Robot/build/gazebo_differential_drive_robot': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/russe/Autonomous_Robot/install/new_gazebo_robot:/home/russe/Autonomous_Robot/install/mobile_robot:/opt/ros/jazzy /usr/bin/cmake --install /home/russe/Autonomous_Robot/build/gazebo_differential_drive_robot
+[0.195s] -- Install configuration: ""
+[0.195s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/launch
+[0.195s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/launch/robot.launch.py
+[0.195s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/model
+[0.195s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/model/robot.xacro
+[0.195s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/config
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/config/gz_bridge.yaml
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/lib/gazebo_differential_drive_robot/square_driver_with_logging.py
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/ament_index/resource_index/package_run_dependencies/gazebo_differential_drive_robot
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/ament_index/resource_index/parent_prefix_path/gazebo_differential_drive_robot
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/environment/ament_prefix_path.sh
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/environment/ament_prefix_path.dsv
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/environment/path.sh
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/environment/path.dsv
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/local_setup.bash
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/local_setup.sh
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/local_setup.zsh
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/local_setup.dsv
+[0.196s] -- Installing: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/package.dsv
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/ament_index/resource_index/packages/gazebo_differential_drive_robot
+[0.196s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/cmake/gazebo_differential_drive_robotConfig.cmake
+[0.197s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/cmake/gazebo_differential_drive_robotConfig-version.cmake
+[0.197s] -- Up-to-date: /home/russe/Autonomous_Robot/install/gazebo_differential_drive_robot/share/gazebo_differential_drive_robot/package.xml
+[0.199s] Invoked command in '/home/russe/Autonomous_Robot/build/gazebo_differential_drive_robot' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/russe/Autonomous_Robot/install/new_gazebo_robot:/home/russe/Autonomous_Robot/install/mobile_robot:/opt/ros/jazzy /usr/bin/cmake --install /home/russe/Autonomous_Robot/build/gazebo_differential_drive_robot

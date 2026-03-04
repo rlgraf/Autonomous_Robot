@@ -4,6 +4,7 @@ avoid_while_interact = mobile_robot.avoid_while_interact:main
 battery_node = mobile_robot.battery_node:main
 bounce_2cylinders = mobile_robot.bounce_2cylinders:main
 bounce_cylinder = mobile_robot.bounce_cylinder:main
+data_logger = mobile_robot.data_logger:main
 find = mobile_robot.find:main
 guest_approach = mobile_robot.guest_approach:main
 guest_find = mobile_robot.guest_find:main

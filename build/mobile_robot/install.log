@@ -1,3 +1,4 @@
+/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/data_logger.py
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/identify.py
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/guest_approach.py
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/test.py
@@ -23,6 +24,7 @@
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/move2.py
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/simple_avoid_obstacle.py
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/soft_obstacle_avoidance.py
+/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__pycache__/data_logger.cpython-312.pyc
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__pycache__/identify.cpython-312.pyc
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__pycache__/guest_approach.cpython-312.pyc
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/__pycache__/test.cpython-312.pyc
@@ -86,6 +88,7 @@
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/battery_node
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/bounce_2cylinders
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/bounce_cylinder
+/home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/data_logger
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/find
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/guest_approach
 /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot/guest_find

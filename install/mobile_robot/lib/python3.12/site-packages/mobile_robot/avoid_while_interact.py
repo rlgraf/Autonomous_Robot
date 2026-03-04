@@ -51,7 +51,7 @@ AVOID_ANGULAR_SPD = 0.5    # rad/s – rotation speed while avoiding
 MIN_RANGE         = 0.10   # m  – ignore sensor self-noise
 MAX_RANGE         = 8.0    # m  – ignore far noise
 FORWARD_ARC       = 1.047 # +/- 60 degrees - forward half only
-AVOID_LINEAR_DIST = 0.5 # m - drive forward after rotating clear
+AVOID_LINEAR_DIST = 0.8 # m - drive forward after rotating clear
 AVOID_LINEAR_SPEED = 0.15   # m/s
 # ─────────────────────────────────────────────────────────────────────────────
 

@@ -120,11 +120,21 @@ def generate_launch_description():
         ]
     )
 
+    data_logger_node = Node(
+        package='mobile_robot',
+        executable='data_logger',
+        name='data_logger',
+        output='screen',
+        parameters=[{'use_sim_time': True}]
+    )
+    
+
     return LaunchDescription([
         bridge_odom,
         find_node,
         move_node,
         avoid_node,
+        data_logger_node,
         TimerAction(period=1.0, actions=[battery_node]),
         TimerAction(period=1.0, actions=[auto_recharge_node]),
         TimerAction(period=1.0, actions=[soft_avoidance_node]),

@@ -56,6 +56,7 @@ setup(
         'avoid_while_interact = mobile_robot.avoid_while_interact:main',
         'auto_recharge_node = mobile_robot.auto_recharge_node:main',
         'soft_obstacle_avoidance_node = mobile_robot.soft_obstacle_avoidance:main',
+        'data_logger = mobile_robot.data_logger:main',
         ],
     },
 )
