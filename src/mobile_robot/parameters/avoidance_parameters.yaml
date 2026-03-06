@@ -25,8 +25,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 soft_obstacle_avoidance_node:
   ros__parameters:
-    trigger_distance:   1.0   # m
-    clear_distance:     1.25   # m   (must be > trigger_distance)
+    trigger_distance:   0.7   # m
+    clear_distance:     0.9   # m   (must be > trigger_distance)
     forward_arc_deg:    70.0   # degrees +/- from robot heading
     avoid_angular_spd:  0.45   # rad/s
     avoid_linear_spd:   0.15   # m/s
@@ -40,5 +40,5 @@ soft_obstacle_avoidance_node:
     wiggle_room:        0.10   # m — extra clearance per side
 
     # Station-proximity suppression
-    station_nearness:   clear_distance   # m — suppress avoidance for far obstacles when
+    station_nearness:   1.5   # m — suppress avoidance for far obstacles when
                                #     robot is closer than this to its target station

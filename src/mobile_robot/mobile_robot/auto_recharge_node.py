@@ -2,35 +2,16 @@
 ###############################################################################
 # Auto Recharge Node
 #
-# Monitors battery_status. When the configured trigger fires, navigates to
-# the nearest charging station using a blended turn+drive controller.
-#
-# Return trigger modes (return_mode in battery_tunable_parameters.yaml):
-#   'threshold'  – trigger when battery_pct < low_battery_threshold
-#   'prediction' – trigger when predicted Ah to reach nearest station
-#                  exceeds current Ah remaining.
-#
-#                  drain_per_metre is derived from the battery node's own
-#                  parameters so it always stays consistent:
-#
-#                    cruise_speed  = max_linear × prediction_cruise_fraction
-#                    turn_speed    = max_angular × prediction_turn_fraction
-#
-#                    total_current = idle_drain_a
-#                                  + move_drain_per_ms × cruise_speed
-#                                  + turn_drain_per_rads × turn_speed
-#
-#                    drain_per_metre = total_current / (cruise_speed × 3600)
-#
-#                  This means prediction mode needs zero manual tuning beyond
-#                  the two fraction parameters.
+# Publishes navigation commands to /recharge/cmd_vel — NOT /cmd_vel directly.
+# soft_obstacle_avoidance_node is the sole owner of /cmd_vel and either
+# forwards these commands unchanged (no obstacle) or overrides with avoidance
+# rotation (obstacle detected). No boolean handshake needed.
 #
 # Topics
 # ──────
 #   Sub  battery_status           sensor_msgs/BatteryState
 #   Sub  /odom_gt                 nav_msgs/Odometry
-#   Sub  /navigation_paused       std_msgs/Bool
-#   Pub  /cmd_vel                 geometry_msgs/Twist
+#   Pub  /recharge/cmd_vel        geometry_msgs/Twist   → soft_avoid reads this
 #   Pub  /recharge_active         std_msgs/Bool
 #   Pub  /target_station_dist     std_msgs/Float32
 ###############################################################################
@@ -59,8 +40,8 @@ class AutoRechargeNode(Node):
     def __init__(self):
         super().__init__('auto_recharge_node')
 
-        # ── Declare ROS2 parameters ────────────────────────────────────────────
-        self.declare_parameter('arrived_radius',             0.25)
+        # ── Parameters ────────────────────────────────────────────────────────
+        self.declare_parameter('arrived_radius',             0.40)
         self.declare_parameter('max_linear',                 5.0)
         self.declare_parameter('max_angular',                5.0)
         self.declare_parameter('k_linear',                   0.4)
@@ -74,24 +55,21 @@ class AutoRechargeNode(Node):
         self.declare_parameter('prediction_turn_fraction',   0.3)
         self.declare_parameter('safety_margin_ah',           0.1)
 
-        self._arrived_radius          = self.get_parameter('arrived_radius').value
-        self._max_linear              = self.get_parameter('max_linear').value
-        self._max_angular             = self.get_parameter('max_angular').value
-        self._k_linear                = self.get_parameter('k_linear').value
-        self._k_angular               = self.get_parameter('k_angular').value
-        self._full_speed_angle        = self.get_parameter('full_speed_angle').value
-        self._stop_drive_angle        = self.get_parameter('stop_drive_angle').value
-        self._control_hz              = self.get_parameter('control_hz').value
-        self._return_mode             = self.get_parameter('return_mode').value
-        self._low_thresh              = self.get_parameter('low_battery_threshold').value
-        self._cruise_fraction         = self.get_parameter('prediction_cruise_fraction').value
-        self._turn_fraction           = self.get_parameter('prediction_turn_fraction').value
-        self._safety_margin           = self.get_parameter('safety_margin_ah').value
+        self._arrived_radius   = self.get_parameter('arrived_radius').value
+        self._max_linear       = self.get_parameter('max_linear').value
+        self._max_angular      = self.get_parameter('max_angular').value
+        self._k_linear         = self.get_parameter('k_linear').value
+        self._k_angular        = self.get_parameter('k_angular').value
+        self._full_speed_angle = self.get_parameter('full_speed_angle').value
+        self._stop_drive_angle = self.get_parameter('stop_drive_angle').value
+        self._control_hz       = self.get_parameter('control_hz').value
+        self._return_mode      = self.get_parameter('return_mode').value
+        self._low_thresh       = self.get_parameter('low_battery_threshold').value
+        self._cruise_fraction  = self.get_parameter('prediction_cruise_fraction').value
+        self._turn_fraction    = self.get_parameter('prediction_turn_fraction').value
+        self._safety_margin    = self.get_parameter('safety_margin_ah').value
 
-        # ── Load battery drain params + stations from YAML ─────────────────────
-        # We read the battery_node section directly so drain_per_metre is always
-        # derived from the same values the battery_node itself uses — single
-        # source of truth, no separate manual tuning.
+        # ── Load battery params + stations from YAML ──────────────────────────
         params_file = os.path.join(
             get_package_share_directory('mobile_robot'),
             'parameters', 'battery_tunable_parameters.yaml'
@@ -100,67 +78,48 @@ class AutoRechargeNode(Node):
             raw = yaml.safe_load(f)
         bat_params = raw['battery_node']['ros__parameters']
 
-        self._stations = [tuple(s) for s in bat_params['charging_stations']]
-        self._capacity = bat_params['battery_capacity_ah']
+        self._stations        = [tuple(s) for s in bat_params['charging_stations']]
+        self._capacity        = bat_params['battery_capacity_ah']
+        self._charging_radius = bat_params['charging_radius']
 
-        # ── Derive drain_per_metre from battery physics ────────────────────────
-        #
-        # The battery node charges at:
-        #   idle component   : idle_drain_a                         (always on)
-        #   movement component: move_drain_per_ms × |linear_vel|   (m/s → A)
-        #   turning component : turn_drain_per_rads × |angular_vel| (rad/s → A)
-        #
-        # We model the return trip as the robot travelling at a steady
-        # cruise_speed with a small constant turn correction:
-        #
-        #   cruise_speed = max_linear × prediction_cruise_fraction
-        #   turn_speed   = max_angular × prediction_turn_fraction
-        #
-        # Total current draw at cruise:
-        #   I_total = idle_drain_a
-        #           + move_drain_per_ms × cruise_speed
-        #           + turn_drain_per_rads × turn_speed
-        #
-        # Time to travel 1 metre at cruise_speed = 1 / cruise_speed  seconds
-        # Charge consumed per metre (Ah) = I_total × (1/cruise_speed) / 3600
-        #
+        # Warn if arrived_radius would stop the robot outside charging range
+        if self._arrived_radius > self._charging_radius:
+            self.get_logger().warn(
+                f'arrived_radius ({self._arrived_radius}m) > '
+                f'charging_radius ({self._charging_radius}m) — '
+                f'robot will stop before entering charging zone! '
+                f'Set arrived_radius < {self._charging_radius}m.'
+            )
+
+        # ── Derive drain_per_metre ─────────────────────────────────────────────
         idle_drain   = bat_params['idle_drain_a']
-        move_drain   = bat_params['move_drain_per_ms']    # A per m/s
-        turn_drain   = bat_params['turn_drain_per_rads']  # A per rad/s
-
+        move_drain   = bat_params['move_drain_per_ms']
+        turn_drain   = bat_params['turn_drain_per_rads']
         cruise_speed = self._max_linear  * self._cruise_fraction
         turn_speed   = self._max_angular * self._turn_fraction
 
-        # Guard against zero cruise speed (misconfigured YAML)
         if cruise_speed <= 0.0:
             cruise_speed = 0.1
-            self.get_logger().warn(
-                'prediction_cruise_fraction × max_linear = 0 — defaulting cruise to 0.1 m/s'
-            )
+            self.get_logger().warn('cruise_speed=0 — defaulting to 0.1 m/s')
 
-        total_current_a   = idle_drain + move_drain * cruise_speed + turn_drain * turn_speed
+        total_current_a       = idle_drain + move_drain * cruise_speed + turn_drain * turn_speed
         self._drain_per_metre = total_current_a / (cruise_speed * 3600.0)
 
         self.get_logger().info(
-            f'AutoRecharge: {len(self._stations)} stations | mode={self._return_mode}\n'
-            f'  Battery drain model: idle={idle_drain}A  '
-            f'move={move_drain}A/(m/s)  turn={turn_drain}A/(rad/s)\n'
-            f'  Cruise model: speed={cruise_speed:.2f}m/s  '
-            f'turn={turn_speed:.2f}rad/s  '
-            f'I_total={total_current_a:.3f}A\n'
-            f'  Derived drain_per_metre={self._drain_per_metre:.5f} Ah/m  '
+            f'AutoRecharge: {len(self._stations)} stations | mode={self._return_mode} | '
+            f'arrived_radius={self._arrived_radius}m (charging_radius={self._charging_radius}m)\n'
+            f'  drain_per_metre={self._drain_per_metre:.5f} Ah/m  '
             f'safety_margin={self._safety_margin:.3f} Ah'
         )
 
         # ── State ─────────────────────────────────────────────────────────────
-        self._battery_pct      = 1.0
-        self._battery_ah       = self._capacity
-        self._pos_x            = 0.0
-        self._pos_y            = 0.0
-        self._yaw              = 0.0
-        self._nav_state        = IDLE
-        self._target_station   = None
-        self._avoidance_paused = False
+        self._battery_pct    = 1.0
+        self._battery_ah     = self._capacity
+        self._pos_x          = 0.0
+        self._pos_y          = 0.0
+        self._yaw            = 0.0
+        self._nav_state      = IDLE
+        self._target_station = None
 
         # Progress watchdog
         self._last_dist_check   = float('inf')
@@ -168,18 +127,22 @@ class AutoRechargeNode(Node):
         self._watchdog_ticks    = int(self._control_hz * 5.0)
         self._progress_margin   = 0.10
 
+        self.charge_needed      = self._low_thresh * self._capacity
+
         # ── Subscriptions ─────────────────────────────────────────────────────
-        self.create_subscription(BatteryState, 'battery_status',     self._battery_cb, 10)
-        self.create_subscription(Odometry,     '/odom_gt',           self._odom_cb,    10)
-        self.create_subscription(Bool,         '/navigation_paused', self._paused_cb,  10)
+        self.create_subscription(BatteryState, 'battery_status', self._battery_cb, 10)
+        self.create_subscription(Odometry,     '/odom_gt',       self._odom_cb,    10)
 
         # ── Publishers ────────────────────────────────────────────────────────
-        self._cmd_pub          = self.create_publisher(Twist,   '/cmd_vel',              10)
-        self._active_pub       = self.create_publisher(Bool,    '/recharge_active',      10)
-        self._station_dist_pub = self.create_publisher(Float32, '/target_station_dist',  10)
+        # NOTE: publishes to /recharge/cmd_vel, NOT /cmd_vel
+        # soft_obstacle_avoidance_node owns /cmd_vel and forwards this through
+        self._cmd_pub          = self.create_publisher(Twist,   '/recharge/cmd_vel',    10)
+        self._active_pub       = self.create_publisher(Bool,    '/recharge/recharge_active',     10)
+        self._station_dist_pub = self.create_publisher(Float32, '/recharge/target_station_dist', 10)
+        self._threshold_pub = self.create_publisher(Float32, '/recharge/low_battery_threshold', 10)     
 
         self.create_timer(1.0 / self._control_hz, self._control_loop)
-        self.get_logger().info('AutoRechargeNode ready.')
+        self.get_logger().info('AutoRechargeNode ready — publishing to /recharge/cmd_vel.')
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
 
@@ -195,9 +158,6 @@ class AutoRechargeNode(Node):
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         self._yaw = math.atan2(siny_cosp, cosy_cosp)
 
-    def _paused_cb(self, msg: Bool):
-        self._avoidance_paused = msg.data
-
     # ── Return-home trigger ───────────────────────────────────────────────────
 
     def _should_return_to_charge(self) -> bool:
@@ -206,11 +166,11 @@ class AutoRechargeNode(Node):
             if nearest is None:
                 return False
             dist          = math.hypot(self._pos_x - nearest[0], self._pos_y - nearest[1])
-            charge_needed = dist * self._drain_per_metre + self._safety_margin
-            trigger       = self._battery_ah <= charge_needed
+            self.charge_needed = dist * self._drain_per_metre + self._safety_margin
+            trigger       = self._battery_ah <= self.charge_needed
             self.get_logger().info(
                 f'[prediction] dist={dist:.1f}m  '
-                f'need={charge_needed:.4f}Ah  have={self._battery_ah:.4f}Ah  '
+                f'need={self.charge_needed:.4f}Ah  have={self._battery_ah:.4f}Ah  '
                 f'→ {"RETURN" if trigger else "ok"}',
                 throttle_duration_sec=5.0,
             )
@@ -246,12 +206,6 @@ class AutoRechargeNode(Node):
         return err
 
     def _linear_speed_blend(self, ang_err: float) -> float:
-        """
-        Scale forward speed by heading alignment:
-          |ang_err| <= full_speed_angle  →  1.0  (full speed, well aligned)
-          |ang_err| >= stop_drive_angle  →  0.0  (turn in place, badly misaligned)
-          between                        →  linear ramp
-        """
         abs_err = abs(ang_err)
         if abs_err <= self._full_speed_angle:
             return 1.0
@@ -260,7 +214,8 @@ class AutoRechargeNode(Node):
         span = self._stop_drive_angle - self._full_speed_angle
         return 1.0 - (abs_err - self._full_speed_angle) / span
 
-    def _stop(self):
+    def _publish_zero(self):
+        """Publish a zero twist — tells soft_avoid to hold position."""
         self._cmd_pub.publish(Twist())
 
     def _publish_active(self, active: bool):
@@ -268,12 +223,27 @@ class AutoRechargeNode(Node):
 
     def _publish_station_dist(self, dist: float):
         self._station_dist_pub.publish(Float32(data=float(dist)))
+    
+    def _publish_threshold(self):
+        """
+        Publish the effective low-battery threshold as a fraction (0-1)
+        so battery_node can use it for /low_battery_warning.
+        In prediction mode, convert safety_margin_ah to an equivalent percentage
+        so move6 gets warned at a meaningful level.
+        """
+        if self._return_mode == 'prediction':
+            # Use safety_margin as the warning floor — at minimum this much
+            # charge must remain, expressed as a fraction of capacity
+            thresh = self.charge_needed / self._capacity
+        else:
+            thresh = self._low_thresh
+        self._threshold_pub.publish(Float32(data=float(thresh)))
 
     # ── Control loop ──────────────────────────────────────────────────────────
 
     def _control_loop(self):
-
-        # ── IDLE: wait for trigger ─────────────────────────────────────────────
+        self._publish_threshold()   # ← add this as first line
+        # ── IDLE ──────────────────────────────────────────────────────────────
         if self._nav_state == IDLE:
             if self._should_return_to_charge():
                 self._target_station    = self._nearest_station()
@@ -294,29 +264,27 @@ class AutoRechargeNode(Node):
         dist = self._dist_to_target()
         self._publish_station_dist(dist)
 
-        if self._avoidance_paused:
-            return
-
-        # ── ARRIVED ───────────────────────────────────────────────────────────
+        # ── ARRIVED: publish zero so soft_avoid forwards nothing ──────────────
         if self._nav_state == ARRIVED:
-            self._stop()
+            self._publish_zero()
             if self._battery_pct >= 0.98:
                 self.get_logger().info('Battery full — returning to IDLE.')
                 self._nav_state      = IDLE
                 self._target_station = None
+                self._publish_active(False)
+                self._publish_station_dist(float('inf'))
             return
 
         # ── Check arrival ─────────────────────────────────────────────────────
         if dist <= self._arrived_radius:
             self._nav_state = ARRIVED
-            self._stop()
-            self._publish_active(False)
+            self._publish_zero()
             self.get_logger().info(
                 f'Arrived at {self._target_station} (dist={dist:.2f}m) — charging.'
             )
             return
 
-        # ── NAVIGATING: blended turn + drive ──────────────────────────────────
+        # ── NAVIGATING ────────────────────────────────────────────────────────
         ang_err = self._angle_to_target()
         blend   = self._linear_speed_blend(ang_err)
 
@@ -333,8 +301,7 @@ class AutoRechargeNode(Node):
             if improvement < self._progress_margin:
                 self.get_logger().warn(
                     f'Progress watchdog: only closed {improvement:.2f}m in '
-                    f'{self._watchdog_ticks / self._control_hz:.0f}s — '
-                    f'resetting convergence.'
+                    f'{self._watchdog_ticks / self._control_hz:.0f}s'
                 )
             self._last_dist_check   = dist
             self._no_progress_ticks = 0
