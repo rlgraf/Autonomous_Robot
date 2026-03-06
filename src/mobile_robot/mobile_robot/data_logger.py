@@ -111,7 +111,7 @@ class DataLoggerNode(Node):
         # ------------------------- Output file -------------------------
         data_dir = os.path.expanduser("~/Autonomous_Robot/src/mobile_robot/data")
         os.makedirs(data_dir, exist_ok=True)
-        self.csv_file = os.path.join(data_dir, "experiment_11.csv")  # tab-delimited TSV
+        self.csv_file = os.path.join(data_dir, "standard_1.csv")  # tab-delimited TSV
 
         self.get_logger().info(
             f"Data logger ready. Tracking {len(self.cylinder_positions)} cylinders. "
@@ -474,15 +474,24 @@ class DataLoggerNode(Node):
                 writer.writerow([])
 
                 writer.writerow(["VISITED CYLINDERS"])
-                writer.writerow(["Visit #", "X", "Y", "Travel Time (s)"])
+                writer.writerow(["Visit #", "X", "Y", "Arrival Time (s)", "Travel Time (s)"])
 
                 for i, (x, y, arrival_time) in enumerate(self.visited_cylinders):
+                    arrival_time_s = (arrival_time - self.start_time).nanoseconds * 1e-9
+
                     if i == 0:
-                        travel_time = (arrival_time - self.start_time).nanoseconds * 1e-9
+                        travel_time = arrival_time_s
                     else:
                         prev_arrival = self.visited_cylinders[i - 1][2]
                         travel_time = (arrival_time - prev_arrival).nanoseconds * 1e-9 - self.dwell_time
-                    writer.writerow([i + 1, f"{x:.3f}", f"{y:.3f}", f"{travel_time:.3f}"])
+
+                    writer.writerow([
+                        i + 1,
+                        f"{x:.3f}",
+                        f"{y:.3f}",
+                        f"{arrival_time_s:.3f}",
+                        f"{travel_time:.3f}",
+                    ])
 
                 writer.writerow([])
 
