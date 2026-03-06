@@ -6,17 +6,17 @@ import random
 from pathlib import Path
 
 # ── Arena ──────────────────────────────────────────────────────────────────────
-HALF_X = 50.0          # 
+HALF_X = 20.0          # 
 HALF_Y = 5
 
 # ── Cylinders ──────────────────────────────────────────────────────────────────
-N     = 100
+N     = 30
 CYL_R = 0.25
 CYL_H = 1.0          # same height as the arena walls
 
 # ── Placement rules ────────────────────────────────────────────────────────────
-WALL_MARGIN     = CYL_R + 1.25   # keep cylinders away from walls
-MIN_CYL_DIST    = CYL_R * 2 + 1.25  # cylinders don't touch each other
+WALL_MARGIN     = CYL_R + 1.5  # keep cylinders away from walls
+MIN_CYL_DIST    = CYL_R * 2 + 1.5  # cylinders don't touch each other
 SPAWN_X         = 0.0           # robot spawns at the origin
 SPAWN_Y         = 0.0
 SPAWN_CLEARANCE = 1.5           # no cylinder within this radius of spawn
@@ -115,8 +115,8 @@ def main() -> None:
       <static>true</static>
       <pose>0 5 0.5 0 0 0</pose>
       <link name="link">
-        <collision name="c"><geometry><box><size>100 0.1 1</size></box></geometry></collision>
-        <visual    name="v"><geometry><box><size>100 0.1 1</size></box></geometry></visual>
+        <collision name="c"><geometry><box><size>40 0.1 1</size></box></geometry></collision>
+        <visual    name="v"><geometry><box><size>40 0.1 1</size></box></geometry></visual>
       </link>
     </model>
 
@@ -125,15 +125,15 @@ def main() -> None:
       <static>true</static>
       <pose>0 -5 0.5 0 0 0</pose>
       <link name="link">
-        <collision name="c"><geometry><box><size>100 0.1 1</size></box></geometry></collision>
-        <visual    name="v"><geometry><box><size>100 0.1 1</size></box></geometry></visual>
+        <collision name="c"><geometry><box><size>40 0.1 1</size></box></geometry></collision>
+        <visual    name="v"><geometry><box><size>40 0.1 1</size></box></geometry></visual>
       </link>
     </model>
 
     <!-- East wall -->
     <model name="wall_east">
       <static>true</static>
-      <pose>50 0 0.5 0 0 0</pose>
+      <pose>20 0 0.5 0 0 0</pose>
       <link name="link">
         <collision name="c"><geometry><box><size>0.1 10 1</size></box></geometry></collision>
         <visual    name="v"><geometry><box><size>0.1 10 1</size></box></geometry></visual>
@@ -143,7 +143,7 @@ def main() -> None:
     <!-- West wall -->
     <model name="wall_west">
       <static>true</static>
-      <pose>-50 0 0.5 0 0 0</pose>
+      <pose>-20 0 0.5 0 0 0</pose>
       <link name="link">
         <collision name="c"><geometry><box><size>0.1 10 1</size></box></geometry></collision>
         <visual    name="v"><geometry><box><size>0.1 10 1</size></box></geometry></visual>

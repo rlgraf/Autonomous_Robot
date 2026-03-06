@@ -29,7 +29,7 @@ ANGULAR_SPEED     = 0.8    # rad/s – rotation speed
 LINEAR_SPEED      = 0.4   # m/s  – forward travel speed
 ANGLE_TOL         = 0.05   # rad  – heading error considered "aligned"
 DIST_TOL          = 0.20   # m    – remaining distance considered "arrived"
-DWELL_TIME        = 5.0    # s    – time to wait at the goal
+DWELL_TIME        = 10.0    # s    – time to wait at the goal
 VISITED_RADIUS    = 0.8    # m    – positions closer than this are "visited"
 DETECTION_TIMEOUT = 1.5    # s    – detections older than this are stale
 # ─────────────────────────────────────────────────────────────────────────────
