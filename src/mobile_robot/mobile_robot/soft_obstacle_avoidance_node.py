@@ -32,7 +32,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, BatteryState
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool, Float32
 
@@ -108,6 +108,8 @@ class SoftObstacleAvoidanceNode(Node):
                                  self._active_cb,       10)
         self.create_subscription(Float32,   '/recharge/target_station_dist',
                                  self._station_dist_cb, 10)
+        self._battery_pct = 1.0
+        self.create_subscription(BatteryState, 'battery_status', self._battery_cb, 10)
 
         # Sole publisher to /cmd_vel
         self._cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -123,6 +125,8 @@ class SoftObstacleAvoidanceNode(Node):
         )
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
+    def _battery_cb(self, msg: BatteryState):
+        self._battery_pct = msg.percentage
 
     def _scan_cb(self, msg: LaserScan):
         pts   = []
@@ -163,6 +167,9 @@ class SoftObstacleAvoidanceNode(Node):
     def _safety_loop(self):
         # Silent when recharge is not active
         if not self._nav_active:
+            return
+        if self._battery_pct <= 0.0:
+            self._cmd_pub.publish(Twist())
             return
 
         if not self._scan_received:

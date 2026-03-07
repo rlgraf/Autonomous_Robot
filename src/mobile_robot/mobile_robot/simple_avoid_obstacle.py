@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, BatteryState
 
 def finite_range(r: float) -> bool:
     return (not math.isinf(r)) and (not math.isnan(r))
@@ -43,6 +43,9 @@ class SimpleLidarAvoider(Node):
         period = 1.0 / max(self.control_hz, 1e-6)
         self.timer = self.create_timer(period, self.on_timer)
 
+        self._battery_pct = 1.0
+        self.create_subscription(BatteryState, 'battery_status', self._battery_cb, 10)
+
         self.get_logger().info(
             f"Running. Sub: {self.scan_topic} Pub: {self.cmd_vel_topic} "
             f"stop_distance={self.stop_distance}m front angle = +/- {self.front_angle_deg} degrees"
@@ -56,19 +59,15 @@ class SimpleLidarAvoider(Node):
         for i, r in enumerate(msg.ranges):
             if finite_range(r) and msg.range_min <= r <= msg.range_max and r < best_r:
                 best_r, best_i = r, i
-
         if best_i is not None:
             center = n // 2
             best_angle = msg.angle_min + best_i * msg.angle_increment
             self.get_logger().info(
                 f"GLOBAL min={best_r:.3f}m at idx={best_i} (center={center}), angle={best_angle:.3f} rad",
                 throttle_duration_sec=1.0
-    )
-
-
+            )
         if n == 0:
             return
-
         # For a full 360 scan, "front" is usually at the middle index
         center = n // 2
 
@@ -86,7 +85,6 @@ class SimpleLidarAvoider(Node):
             if finite_range(r) and msg.range_min <= r <= msg.range_max:
                 if r < m:
                     m = r
-
         self.front_min = m
         self.have_scan = True
 

@@ -15,6 +15,7 @@ from ament_index_python.packages import get_package_share_directory
 import subprocess
 import os
 import math
+from std_msgs.msg import Bool, Float32
 
 DEFAULTS = {
     'battery_capacity_ah' : 1.0,
@@ -24,7 +25,7 @@ DEFAULTS = {
     'battery_voltage'     : 12.0,
     'publish_rate_hz'     : 10.0,
     'charge_rate_a'       : 2.0,
-    'charging_radius'     : 0.5,
+    'charging_radius'     : 0.75,
     'stationary_thresh'   : 0.05,
     # 'charging_stations'   : [0.0, 0.0],
 }
@@ -38,6 +39,8 @@ class BatteryNode(Node):
         # Declare + load all parameters from YAML
         for name, default in DEFAULTS.items():
             self.declare_parameter(name, default)
+        self.declare_parameter('low_battery_threshold',      0.25)
+        self._low_battery_threshold = self.get_parameter('low_battery_threshold').value
 
         self._capacity    = self.get_parameter('battery_capacity_ah').value
         self._idle_drain  = self.get_parameter('idle_drain_a').value
@@ -48,6 +51,7 @@ class BatteryNode(Node):
         self._charge_rate = self.get_parameter('charge_rate_a').value
         self._chg_radius  = self.get_parameter('charging_radius').value
         self._stat_thresh = self.get_parameter('stationary_thresh').value
+        
         # raw_stations      = self.get_parameter('charging_stations').value
         params_file = os.path.join(
             get_package_share_directory('mobile_robot'),
@@ -78,7 +82,7 @@ class BatteryNode(Node):
         self._init_timer = self.create_timer(0.5, self._lookup_station_ids)
 
         # State
-        self._charge_ah       = self._capacity/5  # current charge in Ah
+        self._charge_ah       = self._capacity* 0.05 # current charge in Ah
         self._linear_vel      = 0.0
         self._angular_vel     = 0.0
         self._pos_x           = 0.0
@@ -92,6 +96,9 @@ class BatteryNode(Node):
         self._pos_x_odom        = 0.0
         self._pos_y_odom        = 0.0
         self._world_name: str | None = None
+
+        # self._low_battery_threshold = 0.25   # default until auto_recharge_node connects
+
 
         # Subscribe to odometry to get current velocity
         self.create_subscription(
@@ -116,10 +123,14 @@ class BatteryNode(Node):
             self._gz_battery_callback,
             10
         )
+        self.create_subscription(Float32,'/recharge/low_battery_threshold',self._threshold_cb,10)
 
         # Publish our computed battery state
         self._pub = self.create_publisher(BatteryState, 'battery_status', 10)
         self._cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 1)
+
+        # Publish low battery warning for guest interaction node
+        self._low_battery_pub = self.create_publisher(Bool, '/low_battery_warning', 10)
 
         # Timer to update and publish at fixed rate
         self.create_timer(1.0 / self._rate_hz, self._update_battery)
@@ -149,6 +160,9 @@ class BatteryNode(Node):
         # Use Gazebo's voltage calculation (more accurate)
         self._gz_voltage = msg.voltage
 
+    def _threshold_cb(self, msg: Float32):
+        self._low_battery_threshold = msg.data
+
 
     # -- Helpers -----#
     def _at_charging_station(self) -> bool:
@@ -164,7 +178,13 @@ class BatteryNode(Node):
         speed = math.sqrt(self._linear_vel ** 2 + self._angular_vel ** 2)
         return speed < self._stat_thresh
     
-    
+    def _get_world_name(self) -> str:
+        """Manually set Gazebo world name."""
+        world = "arena"   # <-- change this to match your SDF world name
+        self.get_logger().info(f'Using manual world name: "{world}"')
+        return world
+
+    '''
     def _get_world_name(self) -> str | None:
         """Auto-discover the Gazebo world name."""
         try:
@@ -187,7 +207,7 @@ class BatteryNode(Node):
         except Exception as e:
             self.get_logger().warn(f'Could not discover world name: {e}')
         return None
-    
+    '''
     def _lookup_station_ids(self):
         """Query Gazebo scene repeatedly until all station IDs are resolved."""
         self._world_name = self._get_world_name()
@@ -366,7 +386,12 @@ class BatteryNode(Node):
             # Percentage
             percentage = self._charge_ah / self._capacity
 
-                    # Stop robot when battery is depleted
+            # Publish low battery warning
+            low_battery_msg = Bool()
+            low_battery_msg.data = (percentage < self._low_battery_threshold)  # 25% threshold
+            self._low_battery_pub.publish(low_battery_msg)
+
+            # Stop robot when battery is depleted
             if percentage <= 0.0:
                 self._cmd_vel_pub.publish(Twist())   # all zeros = full stop
                 self.get_logger().error(
@@ -374,13 +399,14 @@ class BatteryNode(Node):
                 throttle_duration_sec=5.0
             )
 
-            # Warn at low battery
-            elif percentage < 0.2:
+            # Warn at low threshold battery
+            elif percentage < self._low_battery_threshold:
                 self.get_logger().warn(
                     f'Low battery: {percentage*100:.1f}% | '
+                    f'threshold={self._low_battery_threshold*100:.1f}% | '
                     f'{self._charge_ah:.3f} Ah remaining',
-                throttle_duration_sec=10.0
-            )
+                    throttle_duration_sec=10.0
+                )
 
         # Build and publish BatteryState message
         msg = BatteryState()

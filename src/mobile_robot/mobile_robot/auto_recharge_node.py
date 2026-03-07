@@ -243,6 +243,12 @@ class AutoRechargeNode(Node):
 
     def _control_loop(self):
         self._publish_threshold()   # ← add this as first line
+        # ── Hard stop: battery dead ───────────────────────────────────────────
+        if self._battery_ah <= 0.0 or self._battery_pct <= 0.0:
+            self._publish_zero()
+            self._publish_active(False)
+            self._cmd_pub.publish(Twist())
+            return
         # ── IDLE ──────────────────────────────────────────────────────────────
         if self._nav_state == IDLE:
             if self._should_return_to_charge():
