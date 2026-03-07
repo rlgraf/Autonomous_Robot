@@ -248,6 +248,7 @@ class AutoRechargeNode(Node):
             self._publish_zero()
             self._publish_active(False)
             self._cmd_pub.publish(Twist())
+            #edit
             return
         # ── IDLE ──────────────────────────────────────────────────────────────
         if self._nav_state == IDLE:

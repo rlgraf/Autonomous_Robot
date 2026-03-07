@@ -170,6 +170,7 @@ class SoftObstacleAvoidanceNode(Node):
             return
         if self._battery_pct <= 0.0:
             self._cmd_pub.publish(Twist())
+            #edit
             return
 
         if not self._scan_received:
