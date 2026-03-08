@@ -20,18 +20,6 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32MultiArray, Bool
 
 
-# ── Tunable parameters ─────────────────────────────────────────────
-STOP_DISTANCE     = 1.0
-ANGULAR_SPEED     = 0.4
-LINEAR_SPEED      = 1.0
-ANGLE_TOL         = 0.05
-DIST_TOL          = 0.20
-DWELL_TIME        = 5.0
-VISITED_RADIUS    = 0.8        # slightly larger for robustness
-DETECTION_TIMEOUT = 1.5
-# ───────────────────────────────────────────────────────────────────
-
-
 class ObjectNavigator(Node):
 
     SEARCHING   = 'SEARCHING'
@@ -41,6 +29,42 @@ class ObjectNavigator(Node):
 
     def __init__(self):
         super().__init__('object_navigator')
+
+        # ── Declare shared / tunable parameters ─────────────────────
+        self.declare_parameter('gain_multiplier', 1.0)
+
+        self.declare_parameter('base_linear_speed', 0.5)
+        self.declare_parameter('base_angular_speed', 0.4)
+
+        self.declare_parameter('stop_distance', 1.0)
+        self.declare_parameter('angle_tol', 0.05)
+        self.declare_parameter('dist_tol', 0.20)
+        self.declare_parameter('dwell_time', 5.0)
+        self.declare_parameter('visited_radius', 0.8)
+        self.declare_parameter('detection_timeout', 1.5)
+
+        # ── Read parameters ─────────────────────────────────────────
+        self.gain_multiplier = float(self.get_parameter('gain_multiplier').value)
+
+        self.base_linear_speed = float(self.get_parameter('base_linear_speed').value)
+        self.base_angular_speed = float(self.get_parameter('base_angular_speed').value)
+
+        self.stop_distance = float(self.get_parameter('stop_distance').value)
+        self.angle_tol = float(self.get_parameter('angle_tol').value)
+        self.dist_tol = float(self.get_parameter('dist_tol').value)
+        self.dwell_time = float(self.get_parameter('dwell_time').value)
+        self.visited_radius = float(self.get_parameter('visited_radius').value)
+        self.detection_timeout = float(self.get_parameter('detection_timeout').value)
+
+        # Derived speeds
+        self.linear_speed = self.base_linear_speed * self.gain_multiplier
+        self.angular_speed = self.base_angular_speed * self.gain_multiplier
+
+        self.get_logger().info(
+            f'Navigator params: gain={self.gain_multiplier:.2f}, '
+            f'linear_speed={self.linear_speed:.2f}, '
+            f'angular_speed={self.angular_speed:.2f}'
+        )
 
         # Supervisor interlock (supervisor owns /cmd_vel when active)
         self.supervisor_active = False
@@ -162,7 +186,7 @@ class ObjectNavigator(Node):
             self.get_logger().info(f'New target: ({self.target_wx:.2f}, {self.target_wy:.2f})')
         else:
             twist = Twist()
-            twist.angular.z = ANGULAR_SPEED
+            twist.angular.z = self.angular_speed
             self.cmd_pub.publish(twist)
 
     def _handle_rotating(self):
@@ -176,12 +200,12 @@ class ObjectNavigator(Node):
         )
         error = self._normalise_angle(angle_to_target - self.robot_yaw)
 
-        if abs(error) < ANGLE_TOL:
+        if abs(error) < self.angle_tol:
             self._stop()
             self.state = self.APPROACHING
         else:
             twist = Twist()
-            twist.angular.z = ANGULAR_SPEED * math.copysign(1.0, error)
+            twist.angular.z = self.angular_speed * math.copysign(1.0, error)
             self.cmd_pub.publish(twist)
 
     def _handle_approaching(self):
@@ -193,13 +217,13 @@ class ObjectNavigator(Node):
             self.target_wx - self.robot_x,
             self.target_wy - self.robot_y
         )
-        remaining = dist - STOP_DISTANCE
+        remaining = dist - self.stop_distance
 
-        if remaining <= DIST_TOL:
+        if remaining <= self.dist_tol:
             self._stop()
             self.dwell_start = self.get_clock().now()
             self.state = self.DWELLING
-            self.get_logger().info(f'Arrived near object. Dwelling for {DWELL_TIME}s.')
+            self.get_logger().info(f'Arrived near object. Dwelling for {self.dwell_time}s.')
             return
 
         angle_to_target = math.atan2(
@@ -209,7 +233,7 @@ class ObjectNavigator(Node):
         heading_error = self._normalise_angle(angle_to_target - self.robot_yaw)
 
         twist = Twist()
-        twist.linear.x = min(LINEAR_SPEED, LINEAR_SPEED * remaining)
+        twist.linear.x = min(self.linear_speed, self.linear_speed * remaining)
         twist.angular.z = 1.5 * heading_error
         self.cmd_pub.publish(twist)
 
@@ -221,7 +245,7 @@ class ObjectNavigator(Node):
             return
 
         elapsed = (self.get_clock().now() - self.dwell_start).nanoseconds * 1e-9
-        if elapsed < DWELL_TIME:
+        if elapsed < self.dwell_time:
             return
 
         # Mark visited once
@@ -245,7 +269,7 @@ class ObjectNavigator(Node):
     # ── Helper Functions ────────────────────────────────────────────
     def _fresh_detections(self):
         age = (self.get_clock().now() - self.last_det_time).nanoseconds * 1e-9
-        return self.detections if age <= DETECTION_TIMEOUT else []
+        return self.detections if age <= self.detection_timeout else []
 
     def _pick_nearest_unvisited(self):
         best = None
@@ -264,7 +288,7 @@ class ObjectNavigator(Node):
 
     def _is_visited(self, wx, wy):
         return any(
-            math.hypot(wx - vx, wy - vy) < VISITED_RADIUS
+            math.hypot(wx - vx, wy - vy) < self.visited_radius
             for vx, vy in self.visited
         )
 

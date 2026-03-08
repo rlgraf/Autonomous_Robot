@@ -1,0 +1,273 @@
+ROS PACKAGE SNIFFER SUMMARY
+Generated: 2026-03-05 11:01:18
+Root: /home/corelab/Autonomous_Robot
+
+=== PACKAGE OVERVIEW ===
+Name: mobile_robot
+Version: 0.0.0
+Description: TODO: Package description
+Dependencies (11): geometry_msgs, joint_state_publisher, nav_msgs, rclpy, robot_state_publisher, ros_gz, ros_gz_bridge, ros_gz_sim, sensor_msgs, std_msgs, xacro
+
+=== BUILD / INSTALL ===
+No CMakeLists.txt summary available.
+Python entry_points console_scripts (11):
+  - test_publisher = mobile_robot.test:main
+  - simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main
+  - orbit_anna = mobile_robot.orbit_anna:main
+  - identify5 = mobile_robot.people_behavior.identify5:main
+  - move5 = mobile_robot.people_behavior.move5:main
+  - avoid_while_interact = mobile_robot.people_behavior.avoid_while_interact:main
+  - supervisor_node = mobile_robot.supervisor.supervisor_node:main
+  - generate_arena2 = mobile_robot.setup:main
+  - auto_recharge_node = mobile_robot.battery_behavior.auto_recharge_node:main
+  - battery_node = mobile_robot.battery_behavior.battery_node:main
+  - soft_obstacle_avoidance_node = mobile_robot.battery_behavior.soft_obstacle_avoidance_node:main
+
+=== ROS INTERFACES (msg/srv/action) ===
+Messages (.msg): 0
+Services (.srv): 0
+Actions (.action): 0
+
+=== LAUNCH FILES ===
+- src/mobile_robot/launch/gazebo_model.launch.py
+  Nodes (5):
+    * ros_gz_sim / create
+    * robot_state_publisher / robot_state_publisher
+    * ros_gz_bridge / parameter_bridge
+    * mobile_robot / battery_node
+    * ros_gz_sim / create
+  Names: GZ_SIM_RESOURCE_PATH, battery_node
+  parameters blocks: 2
+- src/mobile_robot/launch/gazebo_model2.launch.py
+  Nodes (8):
+    * ros_gz_bridge / parameter_bridge
+    * mobile_robot / supervisor_node
+    * mobile_robot / identify5
+    * mobile_robot / move5
+    * mobile_robot / avoid_while_interact
+    * mobile_robot / battery_node
+    * mobile_robot / auto_recharge_node
+    * mobile_robot / soft_obstacle_avoidance_node
+  Names: auto_recharge_node, avoid_while_interact, battery_node, identify5, move5, odom_gt_bridge, soft_obstacle_avoidance_node, supervisor_node
+  parameters blocks: 7
+- src/mobile_robot/launch/simple_avoid_obstacle.launch.py
+  Nodes (1):
+    * mobile_robot / simple_avoid_obstacle
+  Names: simple_avoid_obstacle
+  parameters blocks: 1
+
+=== PYTHON ROS2 NODES (best-effort) ===
+- src/mobile_robot/mobile_robot/battery_behavior/auto_recharge_node.py
+  Node names: auto_recharge_node
+  Publishers (2):
+    * /cmd_vel_recharge  [Twist]
+    * /recharge_active  [Bool]
+  Subscriptions (3):
+    * /battery_status  [BatteryState]
+    * /navigation_paused  [Bool]
+    * /odom_gt  [Odometry]
+  Parameters declared (9): arrived_radius, control_hz, drive_angle, k_angular, k_linear, low_battery_threshold, max_angular, max_linear, turn_only_angle
+  Parameters accessed (9): arrived_radius, control_hz, drive_angle, k_angular, k_linear, low_battery_threshold, max_angular, max_linear, turn_only_angle
+- src/mobile_robot/mobile_robot/battery_behavior/battery_node.py
+  Node names: battery_node
+  Publishers (3):
+    * battery_charging  [Bool]
+    * battery_depleted  [Bool]
+    * battery_status  [BatteryState]
+  Subscriptions (2):
+    * battery_state  [BatteryState]
+    * odom_gt  [Odometry]
+  Timers (sec): 0.0
+  Parameters accessed (9): battery_capacity_ah, battery_voltage, charge_rate_a, charging_radius, idle_drain_a, move_drain_per_ms, publish_rate_hz, stationary_thresh, turn_drain_per_rads
+- src/mobile_robot/mobile_robot/battery_behavior/soft_obstacle_avoidance_node.py
+  Node names: soft_obstacle_avoidance_node
+  Publishers (2):
+    * /cmd_vel_soft_avoid  [Twist]
+    * /navigation_paused  [Bool]
+  Subscriptions (2):
+    * /recharge_active  [Bool]
+    * /scan  [LaserScan]
+  Parameters declared (13): avoid_angular_spd, avoid_linear_dist, avoid_linear_spd, clear_distance, control_hz, forward_arc_deg, max_avoid_sec, max_range, min_range, no_progress_sec, progress_epsilon_m, release_cooldown_sec, trigger_distance
+  Parameters accessed (13): avoid_angular_spd, avoid_linear_dist, avoid_linear_spd, clear_distance, control_hz, forward_arc_deg, max_avoid_sec, max_range, min_range, no_progress_sec, progress_epsilon_m, release_cooldown_sec, trigger_distance
+- src/mobile_robot/mobile_robot/orbit_anna.py
+  Node names: orbit_controller
+  Timers (sec): 0.02
+  Parameters declared (10): center_x, center_y, cmd_vel_topic, k_ang, k_lin, odom_topic, orbit_rate, radius, v_max, w_max
+  Parameters accessed (10): center_x, center_y, cmd_vel_topic, k_ang, k_lin, odom_topic, orbit_rate, radius, v_max, w_max
+- src/mobile_robot/mobile_robot/people_behavior/avoid_while_interact.py
+  Node names: obstacle_avoidance
+  Publishers (3):
+    * /avoid_active  [Bool]
+    * /cmd_vel_avoid  [Twist]
+    * /navigation_paused  [Bool]
+  Subscriptions (1):
+    * /scan  [LaserScan]
+- src/mobile_robot/mobile_robot/people_behavior/identify5.py
+  Node names: lidar_cluster_detector
+  Publishers (2):
+    * /detected_objects  [Float32MultiArray]
+    * /perception_alive  [Bool]
+  Subscriptions (2):
+    * /odom_gt  [Odometry]
+    * /scan  [LaserScan]
+  Timers (sec): 1.0
+- src/mobile_robot/mobile_robot/people_behavior/move5.py
+  Node names: object_navigator
+  Publishers (2):
+    * /cmd_vel_nav  [Twist]
+    * /depart_request  [Bool]
+  Subscriptions (4):
+    * /detected_objects  [Float32MultiArray]
+    * /navigation_paused  [Bool]
+    * /odom_gt  [Odometry]
+    * /supervisor_active  [Bool]
+  Timers (sec): 0.05
+- src/mobile_robot/mobile_robot/simple_avoid_obstacle.py
+  Node names: simple_lidar_avoider
+  Parameters declared (7): cmd_vel_topic, control_hz, forward_speed, front_angle_deg, scan_topic, stop_distance, turn_speed
+  Parameters accessed (7): cmd_vel_topic, control_hz, forward_speed, front_angle_deg, scan_topic, stop_distance, turn_speed
+- src/mobile_robot/mobile_robot/supervisor/supervisor_node.py
+  Node names: supervisor_node
+  Publishers (2):
+    * /cmd_vel  [Twist]
+    * /supervisor_active  [Bool]
+  Subscriptions (9):
+    * /avoid_active  [Bool]
+    * /battery_charging  [Bool]
+    * /cmd_vel_avoid  [Twist]
+    * /cmd_vel_nav  [Twist]
+    * /cmd_vel_recharge  [Twist]
+    * /cmd_vel_soft_avoid  [Twist]
+    * /depart_request  [Bool]
+    * /navigation_paused  [Bool]
+    * /recharge_active  [Bool]
+  Parameters declared (2): cmd_timeout_sec, rate_hz
+  Parameters accessed (2): cmd_timeout_sec, rate_hz
+
+=== C++ ROS2 NODES (best-effort) ===
+No C++ ROS2 nodes detected (or patterns did not match).
+
+=== YAML (PARAMETER) FILES (keys preview) ===
+- src/mobile_robot/launch/Gazebolaunchbashscript.yaml  (key lines: 0)
+- src/mobile_robot/parameters/battery_tunable_parameters.yaml  (key lines: 28)
+        ambient
+        diffuse
+        specular
+      arrived_radius
+      battery_capacity_ah
+      battery_voltage
+      charge_rate_a
+      charging_radius
+      charging_stations
+      color_charging
+      color_full
+      color_idle
+      control_hz
+      drive_angle
+      idle_drain_a
+      k_angular
+      k_linear
+      low_battery_threshold
+      max_angular
+      max_linear
+      move_drain_per_ms
+      publish_rate_hz
+      stationary_thresh
+      turn_drain_per_rads
+      turn_only_angle
+    ros__parameters
+  auto_recharge_node
+  battery_node
+- src/mobile_robot/parameters/bridge_parameters.yaml  (key lines: 5)
+    direction
+    gz_topic_name
+    gz_type_name
+    lazy
+    ros_type_name
+
+=== FILE INVENTORY (text-like) ===
+Total relevant files scanned: 38
+Read OK: 37
+Skipped large: 0
+Skipped binary: 1
+Errors: 0
+
+Paths:
+  - __init__.py (0 bytes)
+  - ros_package_sniffer.py (25303 bytes)
+  - src/mobile_robot/launch/Gazebolaunchbashscript.yaml (481 bytes)
+  - src/mobile_robot/launch/gazebo_model.launch.py (5148 bytes)
+  - src/mobile_robot/launch/gazebo_model2.launch.py (3722 bytes)
+  - src/mobile_robot/launch/simple_avoid_obstacle.launch.py (757 bytes)
+  - src/mobile_robot/mobile_robot/__init__.py (0 bytes)
+  - src/mobile_robot/mobile_robot/battery_behavior/__init__.py (0 bytes)
+  - src/mobile_robot/mobile_robot/battery_behavior/auto_recharge_node.py (12095 bytes)
+  - src/mobile_robot/mobile_robot/battery_behavior/battery_node.py (12501 bytes)
+  - src/mobile_robot/mobile_robot/battery_behavior/soft_obstacle_avoidance_node.py (12947 bytes)
+  - src/mobile_robot/mobile_robot/orbit_anna.py (4503 bytes)
+  - src/mobile_robot/mobile_robot/people_behavior/__init__.py (0 bytes)
+  - src/mobile_robot/mobile_robot/people_behavior/avoid_while_interact.py (10125 bytes)
+  - src/mobile_robot/mobile_robot/people_behavior/identify5.py (8103 bytes)
+  - src/mobile_robot/mobile_robot/people_behavior/move5.py (9951 bytes)
+  - src/mobile_robot/mobile_robot/simple_avoid_obstacle.py (4285 bytes)
+  - src/mobile_robot/mobile_robot/supervisor/__init__.py (0 bytes)
+  - src/mobile_robot/mobile_robot/supervisor/supervisor.txt (3398 bytes)
+  - src/mobile_robot/mobile_robot/supervisor/supervisor_node.py (8137 bytes)
+  - src/mobile_robot/mobile_robot/test.py (9067 bytes)
+  - src/mobile_robot/model/charging_stations.sdf (702 bytes)
+  - src/mobile_robot/model/olaf/license.txt (660 bytes)
+  - src/mobile_robot/model/olaf/model.sdf (1019 bytes)
+  - src/mobile_robot/model/person/anna/license.txt (784 bytes)
+  - src/mobile_robot/model/person/model.sdf (671 bytes)
+  - src/mobile_robot/model/robot.xacro (15558 bytes)
+  - src/mobile_robot/package.xml (976 bytes)
+  - src/mobile_robot/parameters/avoidance_parameters.yaml (1901 bytes)
+  - src/mobile_robot/parameters/battery_tunable_parameters.yaml (1672 bytes)
+  - src/mobile_robot/parameters/bridge_parameters.yaml (1538 bytes)
+  - src/mobile_robot/setup.cfg (93 bytes)
+  - src/mobile_robot/setup.py (2378 bytes)
+  - src/mobile_robot/test/test_copyright.py (961 bytes)
+  - src/mobile_robot/test/test_flake8.py (883 bytes)
+  - src/mobile_robot/test/test_pep257.py (807 bytes)
+  - src/mobile_robot/world/arena2.py (8819 bytes)
+  - src/mobile_robot/world/arena2.sdf (8281 bytes)
+
+=== PER-FILE READ STATUS (DETAIL) ===
+- __init__.py :: ok
+- ros_package_sniffer.py :: ok
+- src/mobile_robot/launch/Gazebolaunchbashscript.yaml :: ok
+- src/mobile_robot/launch/gazebo_model.launch.py :: ok
+- src/mobile_robot/launch/gazebo_model2.launch.py :: ok
+- src/mobile_robot/launch/simple_avoid_obstacle.launch.py :: ok
+- src/mobile_robot/mobile_robot/__init__.py :: ok
+- src/mobile_robot/mobile_robot/battery_behavior/__init__.py :: ok
+- src/mobile_robot/mobile_robot/battery_behavior/auto_recharge_node.py :: ok
+- src/mobile_robot/mobile_robot/battery_behavior/battery_node.py :: ok
+- src/mobile_robot/mobile_robot/battery_behavior/soft_obstacle_avoidance_node.py :: ok
+- src/mobile_robot/mobile_robot/orbit_anna.py :: ok
+- src/mobile_robot/mobile_robot/people_behavior/__init__.py :: ok
+- src/mobile_robot/mobile_robot/people_behavior/avoid_while_interact.py :: ok
+- src/mobile_robot/mobile_robot/people_behavior/identify5.py :: ok
+- src/mobile_robot/mobile_robot/people_behavior/move5.py :: ok
+- src/mobile_robot/mobile_robot/simple_avoid_obstacle.py :: ok
+- src/mobile_robot/mobile_robot/supervisor/__init__.py :: ok
+- src/mobile_robot/mobile_robot/supervisor/supervisor.txt :: ok
+- src/mobile_robot/mobile_robot/supervisor/supervisor_node.py :: ok
+- src/mobile_robot/mobile_robot/test.py :: ok
+- src/mobile_robot/model/charging_stations.sdf :: ok
+- src/mobile_robot/model/olaf/license.txt :: ok
+- src/mobile_robot/model/olaf/model.sdf :: ok
+- src/mobile_robot/model/person/anna/license.txt :: ok
+- src/mobile_robot/model/person/model.sdf :: ok
+- src/mobile_robot/model/robot.xacro :: ok
+- src/mobile_robot/package.xml :: ok
+- src/mobile_robot/parameters/avoidance_parameters.yaml :: skipped_binary
+- src/mobile_robot/parameters/battery_tunable_parameters.yaml :: ok
+- src/mobile_robot/parameters/bridge_parameters.yaml :: ok
+- src/mobile_robot/setup.cfg :: ok
+- src/mobile_robot/setup.py :: ok
+- src/mobile_robot/test/test_copyright.py :: ok
+- src/mobile_robot/test/test_flake8.py :: ok
+- src/mobile_robot/test/test_pep257.py :: ok
+- src/mobile_robot/world/arena2.py :: ok
+- src/mobile_robot/world/arena2.sdf :: ok

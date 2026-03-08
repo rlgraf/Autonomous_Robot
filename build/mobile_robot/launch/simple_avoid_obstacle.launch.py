@@ -1,0 +1,1 @@
+/home/corelab/Autonomous_Robot/src/mobile_robot/launch/simple_avoid_obstacle.launch.py

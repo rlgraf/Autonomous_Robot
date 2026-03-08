@@ -2,15 +2,15 @@
 ###############################################################################
 # Soft Obstacle Avoidance Node (UPDATED FOR SUPERVISOR ARBITER)
 #
-# CHANGE SUMMARY
-#   - NO LONGER publishes to /cmd_vel
-#   - Publishes candidate avoidance command to:  /cmd_vel_avoid
-#   - Keeps publishing /navigation_paused (Bool) as an interlock flag
-#   - Optionally can publish /avoid_active (Bool) if you want later (not required)
+# Key updates you requested:
+#   - Add a bounded avoidance policy so it DOES NOT get stuck rotating forever.
+#   - If no progress (range not increasing) for a while, RELEASE /navigation_paused
+#     so recharge navigation can resume.
+#   - Add a short cooldown after releasing to avoid immediate re-trigger loops.
 #
-# WHY:
-#   Supervisor must be the only publisher to /cmd_vel. This node becomes a
-#   "suggested command" source with higher priority.
+# Publishes:
+#   /cmd_vel_soft_avoid    (geometry_msgs/Twist)   candidate command during recharge
+#   /navigation_paused     (std_msgs/Bool)         gate for recharge-only soft avoid
 ###############################################################################
 
 import math
@@ -46,6 +46,12 @@ class SoftObstacleAvoidanceNode(Node):
         self.declare_parameter('max_range',          8.0)
         self.declare_parameter('control_hz',        20.0)
 
+        # NEW: anti-stuck behavior
+        self.declare_parameter('max_avoid_sec',          8.0)   # hard cap for AVOIDING time
+        self.declare_parameter('no_progress_sec',        2.5)   # if range doesn't improve for this long -> release
+        self.declare_parameter('progress_epsilon_m',     0.05)  # improvement threshold (meters)
+        self.declare_parameter('release_cooldown_sec',   1.0)   # ignore triggers briefly after releasing
+
         self._trigger_dist    = float(self.get_parameter('trigger_distance').value)
         self._clear_dist      = float(self.get_parameter('clear_distance').value)
         self._forward_arc     = math.radians(float(self.get_parameter('forward_arc_deg').value))
@@ -56,15 +62,26 @@ class SoftObstacleAvoidanceNode(Node):
         self._max_range       = float(self.get_parameter('max_range').value)
         self._control_hz      = float(self.get_parameter('control_hz').value)
 
+        self._max_avoid_sec       = float(self.get_parameter('max_avoid_sec').value)
+        self._no_progress_sec     = float(self.get_parameter('no_progress_sec').value)
+        self._progress_eps        = float(self.get_parameter('progress_epsilon_m').value)
+        self._release_cooldown_sec = float(self.get_parameter('release_cooldown_sec').value)
+
         # ── State ─────────────────────────────────────────────────────────────
-        self._state         = IDLE
-        self._scan_points   = []       # [(angle_rad, range_m), ...]
-        self._scan_received = False
+        self._state           = IDLE
+        self._scan_points     = []       # [(angle_rad, range_m), ...]
+        self._scan_received   = False
         self._recharge_active = False
-        self._nudge_steps   = 0
+        self._nudge_steps     = 0
 
         # Latch for paused publishing (avoid spamming)
         self._paused = False
+
+        # NEW: anti-stuck timers/progress
+        self._avoid_start_time = None          # rclpy.time.Time
+        self._last_progress_time = None        # rclpy.time.Time
+        self._best_range = None                # float
+        self._last_release_time = None         # rclpy.time.Time
 
         # ── QoS for lidar (sensor best-effort) ────────────────────────────────
         sensor_qos = QoSProfile(
@@ -78,16 +95,18 @@ class SoftObstacleAvoidanceNode(Node):
         self.create_subscription(Bool, '/recharge_active', self._active_cb, 10)
 
         # ── Publishers ────────────────────────────────────────────────────────
-        # IMPORTANT: publish to candidate topic, supervisor owns /cmd_vel
-        self._cmd_pub_avoid = self.create_publisher(Twist, '/cmd_vel_avoid', 10)
-        self._paused_pub    = self.create_publisher(Bool,  '/navigation_paused', 10)
+        # Candidate topic; supervisor owns /cmd_vel
+        self._cmd_pub_soft = self.create_publisher(Twist, '/cmd_vel_soft_avoid', 10)
+        self._paused_pub   = self.create_publisher(Bool,  '/navigation_paused', 10)
 
         self.create_timer(1.0 / self._control_hz, self._safety_loop)
 
         self.get_logger().info(
             f'SoftObstacleAvoidanceNode ready. '
             f'trigger={self._trigger_dist}m  clear={self._clear_dist}m  '
-            f'arc=±{math.degrees(self._forward_arc):.0f}°'
+            f'arc=±{math.degrees(self._forward_arc):.0f}°  '
+            f'max_avoid={self._max_avoid_sec:.1f}s  no_progress={self._no_progress_sec:.1f}s  '
+            f'cooldown={self._release_cooldown_sec:.1f}s'
         )
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
@@ -111,6 +130,8 @@ class SoftObstacleAvoidanceNode(Node):
     # ── Safety loop ───────────────────────────────────────────────────────────
 
     def _safety_loop(self):
+        now = self.get_clock().now()
+
         # Only run avoidance when recharge is active
         if not self._recharge_active:
             if self._state != IDLE:
@@ -119,6 +140,12 @@ class SoftObstacleAvoidanceNode(Node):
 
         if not self._scan_received:
             return
+
+        # Cooldown after release to avoid re-trigger loops
+        if self._last_release_time is not None:
+            since_rel = (now - self._last_release_time).nanoseconds * 1e-9
+            if since_rel < self._release_cooldown_sec:
+                return
 
         nearest_range, nearest_bearing = self._nearest_in_arc()
 
@@ -131,39 +158,72 @@ class SoftObstacleAvoidanceNode(Node):
                     f'(bearing {math.degrees(nearest_bearing):.1f}°) — '
                     f'interrupting recharge navigation.'
                 )
-                self._state = AVOIDING
+                self._enter_avoiding(now, nearest_range)
                 self._publish_paused(True)
-                self._publish_stop()  # to /cmd_vel_avoid
+                self._publish_stop()
 
         # ── AVOIDING: rotate away from nearest obstacle ───────────────────────
         elif self._state == AVOIDING:
+            # Success condition
             if nearest_range >= self._clear_dist:
-                steps = int((self._avoid_lin_dist / max(self._avoid_lin_spd, 1e-6)) * self._control_hz)
-                self._nudge_steps = max(0, steps)
-                self._state = NUDGING
-                self.get_logger().info('Obstacle cleared — nudging forward.')
-            else:
-                twist = Twist()
-                # Turn away: obstacle left (+bearing) => turn right (-)
-                twist.angular.z = (-self._avoid_ang_spd if nearest_bearing >= 0 else self._avoid_ang_spd)
-                self._cmd_pub_avoid.publish(twist)
+                self._enter_nudging()
+                return
+
+            # Anti-stuck: progress tracking + timeouts
+            if self._avoid_start_time is None:
+                self._avoid_start_time = now
+            if self._last_progress_time is None:
+                self._last_progress_time = now
+            if self._best_range is None:
+                self._best_range = nearest_range
+
+            total = (now - self._avoid_start_time).nanoseconds * 1e-9
+            no_prog = (now - self._last_progress_time).nanoseconds * 1e-9
+
+            # Update "progress" if range improves meaningfully
+            if nearest_range > (self._best_range + self._progress_eps):
+                self._best_range = nearest_range
+                self._last_progress_time = now
+                no_prog = 0.0
+
+            # Hard cap or no-progress release
+            if (total >= self._max_avoid_sec) or (no_prog >= self._no_progress_sec):
                 self.get_logger().warn(
-                    f'Avoiding: {nearest_range:.2f} m at {math.degrees(nearest_bearing):.1f}° — rotating.',
-                    throttle_duration_sec=0.5,
+                    f'Avoidance release: total={total:.1f}s, no_progress={no_prog:.1f}s, '
+                    f'nearest={nearest_range:.2f}m @ {math.degrees(nearest_bearing):.1f}°. '
+                    f'Releasing recharge navigation.'
                 )
+                self._publish_stop()
+                self._publish_paused(False)
+                self._state = WATCHING
+                self._reset_avoid_progress()
+                self._last_release_time = now
+                return
+
+            # Continue avoidance rotation
+            twist = Twist()
+            # Turn away: obstacle left (+bearing) => turn right (-)
+            twist.angular.z = (-self._avoid_ang_spd if nearest_bearing >= 0 else self._avoid_ang_spd)
+            self._cmd_pub_soft.publish(twist)
+            self.get_logger().warn(
+                f'Avoiding: {nearest_range:.2f} m at {math.degrees(nearest_bearing):.1f}° — rotating.',
+                throttle_duration_sec=0.5,
+            )
 
         # ── NUDGING: short forward drive before handing back ──────────────────
         elif self._state == NUDGING:
             if self._nudge_steps > 0:
                 twist = Twist()
                 twist.linear.x = self._avoid_lin_spd
-                self._cmd_pub_avoid.publish(twist)
+                self._cmd_pub_soft.publish(twist)
                 self._nudge_steps -= 1
             else:
                 self.get_logger().info('Nudge complete — resuming recharge navigation.')
                 self._state = WATCHING
                 self._publish_stop()
                 self._publish_paused(False)
+                self._reset_avoid_progress()
+                self._last_release_time = now
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -177,7 +237,7 @@ class SoftObstacleAvoidanceNode(Node):
         return nearest_r, nearest_b
 
     def _publish_stop(self):
-        self._cmd_pub_avoid.publish(Twist())
+        self._cmd_pub_soft.publish(Twist())
 
     def _publish_paused(self, paused: bool):
         # Only publish on changes (reduces noise)
@@ -186,11 +246,31 @@ class SoftObstacleAvoidanceNode(Node):
         self._paused = paused
         self._paused_pub.publish(Bool(data=paused))
 
+    def _enter_avoiding(self, now, nearest_range: float):
+        self._state = AVOIDING
+        self._avoid_start_time = now
+        self._last_progress_time = now
+        self._best_range = nearest_range
+
+    def _enter_nudging(self):
+        steps = int((self._avoid_lin_dist / max(self._avoid_lin_spd, 1e-6)) * self._control_hz)
+        self._nudge_steps = max(0, steps)
+        self._state = NUDGING
+        self.get_logger().info('Obstacle cleared — nudging forward.')
+        self._reset_avoid_progress()
+
+    def _reset_avoid_progress(self):
+        self._avoid_start_time = None
+        self._last_progress_time = None
+        self._best_range = None
+
     def _exit_avoidance(self):
         self._state = IDLE
         self._nudge_steps = 0
         self._publish_stop()
         self._publish_paused(False)
+        self._reset_avoid_progress()
+        self._last_release_time = self.get_clock().now()
 
 
 def main(args=None):

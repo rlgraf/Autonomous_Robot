@@ -1,0 +1,10 @@
+[console_scripts]
+auto_recharge_node = mobile_robot.battery_behavior.auto_recharge_node:main
+avoid_while_interact = mobile_robot.people_behavior.avoid_while_interact:main
+battery_node = mobile_robot.battery_behavior.battery_node:main
+data_logger = mobile_robot.data_logger:main
+generate_arena2 = mobile_robot.setup:main
+identify5 = mobile_robot.people_behavior.identify5:main
+move5 = mobile_robot.people_behavior.move5:main
+soft_obstacle_avoidance_node = mobile_robot.battery_behavior.soft_obstacle_avoidance_node:main
+supervisor_node = mobile_robot.supervisor.supervisor_node:main

@@ -8,10 +8,18 @@ import xacro
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction, SetEnvironmentVariable
+from launch.actions import (
+    IncludeLaunchDescription,
+    TimerAction,
+    SetEnvironmentVariable,
+    ExecuteProcess,
+    RegisterEventHandler,
+)
+from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 from launch_ros.actions import Node
+
 
 def generate_launch_description():
 
@@ -19,32 +27,45 @@ def generate_launch_description():
     namePackage = 'mobile_robot'
 
     pkg_share = get_package_share_directory(namePackage)
-    modelFileRelativePath = 'model/robot.xacro'
-    pathModelFile = os.path.join(pkg_share, modelFileRelativePath)
-    
+
+    pathModelFile = os.path.join(pkg_share, 'model', 'robot.xacro')
+
+    # IMPORTANT:
+    # This must match where arena2.py is installed in your package share.
+    # Change 'worlds' to 'world' if that is your actual installed folder name.
+    pathGenScript = os.path.join(pkg_share, 'world', 'arena2.py')
+
+    generatedWorldPath = '/tmp/arena_generated.sdf'
+
+    print("Generator script:", pathGenScript, "exists:", os.path.exists(pathGenScript))
+    print("Generated world target:", generatedWorldPath)
+
     # Robot description from xacro
     robotDescription = xacro.process_file(pathModelFile).toxml()
 
-    # Gazebo launch (DEFAULT world)
+    # Gazebo launch source
     gazebo_rosPackageLaunch = PythonLaunchDescriptionSource(
         os.path.join(
             get_package_share_directory('ros_gz_sim'),
             'launch',
             'gz_sim.launch.py'
-        )  
+        )
     )
 
-    arena2_sdf = "/home/corelab/Autonomous_Robot/src/mobile_robot/world/arena2.sdf"
-    print("Loading world file:", arena2_sdf, "exists:", os.path.exists(arena2_sdf))
+    # 1. Generate the random world first
+    generateWorld = ExecuteProcess(
+        cmd=['python3', pathGenScript, '--out', generatedWorldPath],
+        output='screen'
+    )
 
+    # 2. Launch Gazebo using the generated world
     gazeboLaunch = IncludeLaunchDescription(
         gazebo_rosPackageLaunch,
         launch_arguments={
-            'gz_args': f'-r {arena2_sdf}',
+            'gz_args': f'-r -v4 {generatedWorldPath}',
             'on_exit_shutdown': 'true'
         }.items()
     )
-   
 
     # Spawn robot
     spawnModelNodeGazebo = Node(
@@ -53,7 +74,7 @@ def generate_launch_description():
         arguments=[
             '-name', robotXacroName,
             '-topic', 'robot_description',
-            '-x', '-9.0',
+            '-x', '-20.0',
             '-y', '0.0',
             '-z', '0.0',
         ],
@@ -89,24 +110,32 @@ def generate_launch_description():
         output='screen',
     )
 
-    # Battery parameters
-    params_battery_file = os.path.join(
+    # Shared simulation parameters file
+    shared_params_file = os.path.join(
         pkg_share,
         'parameters',
         'battery_tunable_parameters.yaml'
     )
 
-    with open(params_battery_file, 'r') as f:
-        battery_params = yaml.safe_load(f)
+    with open(shared_params_file, 'r') as f:
+        shared_params = yaml.safe_load(f)
 
-    ros_params = battery_params['battery_node']['ros__parameters']
+    battery_ros_params = shared_params['battery_node']['ros__parameters']
+
+    charging_x = list(battery_ros_params.get('charging_station_x', []))
+    charging_y = list(battery_ros_params.get('charging_station_y', []))
+
+    if len(charging_x) != len(charging_y):
+        raise ValueError(
+            'charging_station_x and charging_station_y must have the same length'
+        )
 
     charging_stations = [
-        tuple(s) for s in ros_params.get('charging_stations', [])
+        (float(x), float(y)) for x, y in zip(charging_x, charging_y)
     ]
 
     charging_radius = float(
-        ros_params.get('charging_radius', 0.5)
+        battery_ros_params.get('charging_radius', 0.5)
     )
 
     # Battery node
@@ -115,7 +144,7 @@ def generate_launch_description():
         executable='battery_node',
         name='battery_node',
         output='screen',
-        parameters=[params_battery_file],
+        parameters=[shared_params_file],
     )
 
     # Charging station template
@@ -131,7 +160,6 @@ def generate_launch_description():
     spawn_station_nodes = []
 
     for i, (sx, sy) in enumerate(charging_stations):
-
         sdf_string = (
             station_sdf_template
             .replace('STATION_ID', str(i))
@@ -145,21 +173,13 @@ def generate_launch_description():
                 arguments=[
                     '-string', sdf_string,
                     '-name', f'charging_station_{i}',
-                    '-x', str(float(sx)),
-                    '-y', str(float(sy)),
+                    '-x', str(sx),
+                    '-y', str(sy),
                     '-z', '0.01',
                 ],
                 output='screen'
             )
         )
-
-    # Person model spawning
-    person_model_sdf_path = os.path.join(
-        pkg_share,
-        'model',
-        'person',
-        'model.sdf'
-    )
 
     # Ensure Gazebo can resolve model://person URIs
     set_gz_resource_path = SetEnvironmentVariable(
@@ -167,30 +187,48 @@ def generate_launch_description():
         value=os.path.join(pkg_share, 'model')
     )
 
-    return LaunchDescription([
+    ld = LaunchDescription()
 
-        set_gz_resource_path,
+    ld.add_action(set_gz_resource_path)
+    ld.add_action(nodeRobotStatePublisher)
+    ld.add_action(generateWorld)
 
-        gazeboLaunch,
-        nodeRobotStatePublisher,
+    def on_generator_exit(event, context):
+        if event.returncode != 0:
+            print(
+                f'\n[ERROR] World generator failed with exit code {event.returncode}\n'
+                f'Generator path: {pathGenScript}\n'
+                f'Check whether arena2.py is installed in the package share.\n'
+            )
+            return []
 
-        TimerAction(
-            period=4.0,
-            actions=[spawnModelNodeGazebo]
-        ),
+        return [
+            gazeboLaunch,
+            TimerAction(
+                period=4.0,
+                actions=[spawnModelNodeGazebo]
+            ),
+            TimerAction(
+                period=4.5,
+                actions=[start_gazebo_ros_bridge_cmd]
+            ),
+            TimerAction(
+                period=5.0,
+                actions=[start_battery_cmd]
+            ),
+            TimerAction(
+                period=5.5,
+                actions=spawn_station_nodes
+            ),
+        ]
 
-        TimerAction(
-            period=4.5,
-            actions=[start_gazebo_ros_bridge_cmd]
-        ),
+    ld.add_action(
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=generateWorld,
+                on_exit=on_generator_exit
+            )
+        )
+    )
 
-        TimerAction(
-            period=5.0,
-            actions=[start_battery_cmd]
-        ),
-
-        TimerAction(
-            period=5.5,
-            actions=[*spawn_station_nodes]
-        ),
-    ])
+    return ld

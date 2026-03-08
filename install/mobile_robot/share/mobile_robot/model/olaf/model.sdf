@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+  <model name="olaf">
+    <static>true</static>
+
+    <link name="link">
+      <!-- Minimal inertial (required by some physics settings) -->
+      <inertial>
+        <mass>1.0</mass>
+        <inertia>
+          <ixx>0.01</ixx> <iyy>0.01</iyy> <izz>0.01</izz>
+          <ixy>0.0</ixy> <ixz>0.0</ixz> <iyz>0.0</iyz>
+        </inertia>
+      </inertial>
+
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <!-- Olaf files live in model/olaf/ -->
+            <uri>model://olaf/olaf.gltf</uri>
+          </mesh>
+        </geometry>
+
+        <!-- Optional: adjust pose if needed -->
+        <pose>0 0 0 0 0 0</pose>
+      </visual>
+
+      <!-- Optional collision. If you don't need physics, you can delete this entire block. -->
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.4 0.4 1.0</size>
+          </box>
+        </geometry>
+        <pose>0 0 0.5 0 0 0</pose>
+      </collision>
+
+    </link>
+  </model>
+</sdf>

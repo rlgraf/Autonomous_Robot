@@ -36,7 +36,7 @@ MAX_CLUSTER_POINTS      = 80
 MIN_CLUSTER_WIDTH       = 0.05
 MAX_CLUSTER_WIDTH       = 1.2
 MIN_RANGE               = 0.15
-MAX_RANGE               = 8.0
+MAX_RANGE               = 10.0
 WALL_RESIDUAL_THRESH    = 0.01
 MAX_RANGE_VARIANCE      = 1.0
 # ─────────────────────────────────────────────────────────────────────────────

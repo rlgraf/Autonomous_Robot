@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Soft Obstacle Avoidance Parameters
+# Used by soft_obstacle_avoidance_node
+#
+# Tuning guide:
+#   trigger_distance  – obstacle must be closer than this to interrupt navigation
+#   clear_distance    – obstacle must reach this distance before navigation resumes
+#                       (clear > trigger creates hysteresis, prevents flickering)
+#   forward_arc_deg   – only lidar points within +/- this angle from dead-ahead
+#                       are checked; keeps the node from reacting to side walls
+#   avoid_angular_spd – rotation speed while turning away from obstacle (rad/s)
+#   avoid_linear_spd  – forward nudge speed after rotating clear (m/s)
+#   avoid_linear_dist – how far to nudge forward before handing back to navigator (m)
+#   min_range         – ignore lidar returns closer than this (sensor self-noise)
+#   max_range         – ignore lidar returns farther than this (distant clutter)
+#   control_hz        – safety loop rate; keep >= 20 for responsive avoidance
+# ─────────────────────────────────────────────────────────────────────────────
+soft_obstacle_avoidance_node:
+  ros__parameters:
+    trigger_distance:   0.6   # m
+    clear_distance:     0.8   # m   (must be > trigger_distance)
+    forward_arc_deg:    40.0   # degrees +/- from robot heading
+    avoid_angular_spd:  0.6   # rad/s
+    avoid_linear_spd:   0.2   # m/s
+    avoid_linear_dist:  0.25   # m
+    min_range:          0.10   # m
+    max_range:          8.0    # m
+    control_hz:         20.0   # Hz
+    

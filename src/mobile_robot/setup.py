@@ -48,10 +48,6 @@ setup(
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
-            'test_publisher = mobile_robot.test:main',
-            'simple_avoid_obstacle = mobile_robot.simple_avoid_obstacle:main',
-            'orbit_anna = mobile_robot.orbit_anna:main',
-
             # People behavior scripts
             'identify5 = mobile_robot.people_behavior.identify5:main',
             'move5 = mobile_robot.people_behavior.move5:main',
@@ -63,10 +59,13 @@ setup(
             # Arena generation (not a ROS node, but convenient to have as a script)
             'generate_arena2 = mobile_robot.setup:main',
 
-            # battery behavior scripts (optional)
+            # Battery behavior scripts
             'auto_recharge_node = mobile_robot.battery_behavior.auto_recharge_node:main',
             'battery_node = mobile_robot.battery_behavior.battery_node:main',
-            'soft_obstacle_avoidance_node = mobile_robot.battery_behavior.soft_obstacle_avoidance_node:main'       
+            'soft_obstacle_avoidance_node = mobile_robot.battery_behavior.soft_obstacle_avoidance_node:main',
+
+            #Data Logging 
+            'data_logger = mobile_robot.data_logger:main',    
              ],
     },
 )

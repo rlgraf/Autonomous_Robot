@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: mobile-robot
+Version: 0.0.0
+Summary: mobile_robot
+Maintainer: russell
+Maintainer-email: rlgraf@ucdavis.edu
+License: TODO
+Provides-Extra: test

@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+
+from launch import LaunchDescription
+from launch.actions import TimerAction
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+
+    bridge_odom = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='odom_gt_bridge',
+        arguments=[
+            '/model/differential_drive_robot/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry'
+        ],
+        remappings=[
+            ('/model/differential_drive_robot/odometry', '/odom_gt')
+        ],
+        output='screen'
+    )
+
+    # Supervisor (must be running BEFORE cmd publishers start)
+    supervisor_node = Node(
+        package='mobile_robot',
+        executable='supervisor_node',
+        name='supervisor_node',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+    )
+
+    find_node = Node(
+        package='mobile_robot',
+        executable='identify5',
+        name='identify5',
+        output='screen',
+        parameters=[{'use_sim_time': True}]
+    )
+
+    # Navigation (guest interaction)
+    move_node = Node(
+        package='mobile_robot',
+        executable='move5',
+        name='move5',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+        remappings=[
+            ('/cmd_vel', '/cmd_vel_nav'),   # IMPORTANT
+        ],
+    )
+
+    # Interaction avoidance (near-object avoidance)
+    avoid_node = Node(
+        package='mobile_robot',
+        executable='avoid_while_interact',
+        name='avoid_while_interact',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+        remappings=[
+            ('/cmd_vel', '/cmd_vel_avoid'), # IMPORTANT
+        ],
+    )
+
+    # Battery model / status publisher
+    battery_node = Node(
+        package='mobile_robot',
+        executable='battery_node',
+        name='battery_node',
+        output='screen',
+        parameters=[{'use_sim_time': True}]
+    )
+
+    # Recharge navigation (to charging station)
+    recharge_node = Node(
+        package='mobile_robot',
+        executable='auto_recharge_node',
+        name='auto_recharge_node',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+        remappings=[
+            # keep it isolated too
+            ('/cmd_vel_recharge', '/cmd_vel_recharge'),
+        ],
+    )
+
+    # Soft obstacle avoidance for recharging (monitors /recharge_active)
+    soft_avoid_node = Node(
+        package='mobile_robot',
+        executable='soft_obstacle_avoidance_node',
+        name='soft_obstacle_avoidance_node',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+        remappings=[
+            # make avoidance output its own cmd topic; supervisor will arbitrate
+            ('/cmd_vel', '/cmd_vel_soft_avoid'),
+        ],
+    )
+
+    return LaunchDescription([
+        bridge_odom,
+
+        # bring up supervisor first (so it can latch subscriptions before others publish)
+        TimerAction(period=0.2, actions=[supervisor_node]),
+
+        # perception first
+        TimerAction(period=0.5, actions=[find_node]),
+
+        # base behaviours
+        TimerAction(period=1.0, actions=[move_node]),
+        TimerAction(period=1.5, actions=[avoid_node]),
+
+        # battery / recharge stack
+        TimerAction(period=2.0, actions=[battery_node]),
+        TimerAction(period=2.2, actions=[recharge_node]),
+        TimerAction(period=2.4, actions=[soft_avoid_node]),
+    ])
