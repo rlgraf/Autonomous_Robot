@@ -17,7 +17,7 @@ battery_node:
     #charge_rate_a: 20.0
     charge_rate_a: 40.0
     charging_radius: 0.75
-    stationary_thresh: 0.05
+    stationary_thresh: 0.1
 
 
     # Charging station visual colors [r, g, b, a]

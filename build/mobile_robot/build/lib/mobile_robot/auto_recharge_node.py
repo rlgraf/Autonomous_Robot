@@ -51,8 +51,8 @@ class AutoRechargeNode(Node):
         self.declare_parameter('max_angular',           0.80)
         self.declare_parameter('k_linear',              0.4)
         self.declare_parameter('k_angular',             1.6)
-        self.declare_parameter('turn_only_angle',       0.25)
-        self.declare_parameter('drive_angle',           0.40)
+        self.declare_parameter('turn_only_angle',       0.20)
+        self.declare_parameter('drive_angle',           0.60)
         self.declare_parameter('control_hz',            20.0)
 
         self._low_thresh      = self.get_parameter('low_battery_threshold').value

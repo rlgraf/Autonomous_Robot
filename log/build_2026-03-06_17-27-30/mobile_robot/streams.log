@@ -1,0 +1,57 @@
+[0.618s] Invoking command in '/home/russe/Autonomous_Robot/src/mobile_robot': PYTHONPATH=/home/russe/Autonomous_Robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mobile_robot build --build-base /home/russe/Autonomous_Robot/build/mobile_robot/build install --record /home/russe/Autonomous_Robot/build/mobile_robot/install.log --single-version-externally-managed install_data
+[0.806s] running egg_info
+[0.819s] writing ../../build/mobile_robot/mobile_robot.egg-info/PKG-INFO
+[0.820s] writing dependency_links to ../../build/mobile_robot/mobile_robot.egg-info/dependency_links.txt
+[0.820s] writing entry points to ../../build/mobile_robot/mobile_robot.egg-info/entry_points.txt
+[0.820s] writing requirements to ../../build/mobile_robot/mobile_robot.egg-info/requires.txt
+[0.820s] writing top-level names to ../../build/mobile_robot/mobile_robot.egg-info/top_level.txt
+[0.847s] reading manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[0.848s] writing manifest file '../../build/mobile_robot/mobile_robot.egg-info/SOURCES.txt'
+[0.848s] running build
+[0.848s] running build_py
+[0.848s] copying mobile_robot/battery_node.py -> /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot
+[0.849s] copying mobile_robot/auto_recharge_node.py -> /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot
+[0.850s] copying mobile_robot/soft_obstacle_avoidance.py -> /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot
+[0.851s] running install
+[0.855s] running install_lib
+[0.868s] copying /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot/battery_node.py -> /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+[0.868s] copying /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot/auto_recharge_node.py -> /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+[0.869s] copying /home/russe/Autonomous_Robot/build/mobile_robot/build/lib/mobile_robot/soft_obstacle_avoidance.py -> /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot
+[0.869s] byte-compiling /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/battery_node.py to battery_node.cpython-312.pyc
+[0.872s] byte-compiling /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/auto_recharge_node.py to auto_recharge_node.cpython-312.pyc
+[0.874s] byte-compiling /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot/soft_obstacle_avoidance.py to soft_obstacle_avoidance.cpython-312.pyc
+[0.876s] running install_data
+[0.876s] copying parameters/battery_tunable_parameters.yaml -> /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/parameters
+[0.877s] copying parameters/avoidance_parameters.yaml -> /home/russe/Autonomous_Robot/install/mobile_robot/share/mobile_robot/parameters
+[0.877s] running install_egg_info
+[0.891s] removing '/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info' (and everything under it)
+[0.891s] Copying ../../build/mobile_robot/mobile_robot.egg-info to /home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages/mobile_robot-0.0.0-py3.12.egg-info
+[0.892s] running install_scripts
+[0.984s] Installing auto_recharge_node script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.984s] Installing avoid_while_interact script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.985s] Installing battery_node script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.985s] Installing bounce_2cylinders script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.985s] Installing bounce_cylinder script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.985s] Installing data_logger script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.985s] Installing find script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.985s] Installing guest_approach script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.985s] Installing guest_find script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.986s] Installing identify2 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.986s] Installing identify3 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.986s] Installing identify5 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.986s] Installing identify6 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.986s] Installing identify_move_supervisor script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.986s] Installing move script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.986s] Installing move2 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.986s] Installing move5 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.987s] Installing move6 script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.987s] Installing rotate_90_degrees script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.987s] Installing simple_avoid_obstacle script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.987s] Installing simple_guest_approach script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.987s] Installing simple_guest_find script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.987s] Installing soft_obstacle_avoidance_node script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.987s] Installing spin_head script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.987s] Installing square_driver_with_logging script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.988s] Installing test_publisher script to /home/russe/Autonomous_Robot/install/mobile_robot/lib/mobile_robot
+[0.988s] writing list of installed files to '/home/russe/Autonomous_Robot/build/mobile_robot/install.log'
+[1.011s] Invoked command in '/home/russe/Autonomous_Robot/src/mobile_robot' returned '0': PYTHONPATH=/home/russe/Autonomous_Robot/build/mobile_robot/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/russe/Autonomous_Robot/install/mobile_robot/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/mobile_robot build --build-base /home/russe/Autonomous_Robot/build/mobile_robot/build install --record /home/russe/Autonomous_Robot/build/mobile_robot/install.log --single-version-externally-managed install_data

@@ -19,14 +19,14 @@ from std_msgs.msg import Bool
 
 DEFAULTS = {
     'battery_capacity_ah' : 1.0,
-    'idle_drain_a'        : 1.0,
-    'move_drain_per_ms'   : 10.0,
-    'turn_drain_per_rads' : 5.0,
+    'idle_drain_a'        : 2.0,
+    'move_drain_per_ms'   : 20.0,
+    'turn_drain_per_rads' : 10.0,
     'battery_voltage'     : 12.0,
     'publish_rate_hz'     : 10.0,
-    'charge_rate_a'       : 2.0,
+    'charge_rate_a'       : 40.0,
     'charging_radius'     : 0.75,
-    'stationary_thresh'   : 0.05,
+    'stationary_thresh'   : 0.1,
     # 'charging_stations'   : [0.0, 0.0],
 }
 

@@ -111,7 +111,7 @@ class DataLoggerNode(Node):
         # ------------------------- Output file -------------------------
         data_dir = os.path.expanduser("~/Autonomous_Robot/src/mobile_robot/data")
         os.makedirs(data_dir, exist_ok=True)
-        self.csv_file = os.path.join(data_dir, "standard_1.csv")  # tab-delimited TSV
+        self.csv_file = os.path.join(data_dir, "standard_2.csv")  # tab-delimited TSV
 
         self.get_logger().info(
             f"Data logger ready. Tracking {len(self.cylinder_positions)} cylinders. "
