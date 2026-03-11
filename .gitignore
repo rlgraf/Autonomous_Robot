@@ -18,4 +18,7 @@ venv/
 .vscode/
 
 # Mac
-.DS_Store
+.DS_Store*.mp4
+
+*.mp4
+*:Zone.Identifier

@@ -2,12 +2,13 @@
 """
 arena2.py
 
-Generates a Gazebo SDF world with randomly placed cylinders.
+Generates a Gazebo SDF world with randomly placed cylinders and
+visual-only boundary walls.
 
 This script is intended to be called from a ROS2 launch file:
     python3 arena2.py --out /tmp/arena_generated.sdf
 
-Arena size: 30 m × 10 m
+Arena size: 40 m × 10 m
 """
 
 import argparse
@@ -16,17 +17,21 @@ import random
 from pathlib import Path
 
 # ── Arena bounds (sampling limits only) ───────────────────────────────────────
-HALF_X = 20.0   # total length = 30 m
+HALF_X = 20.0   # total length = 40 m
 HALF_Y = 5.0    # total width  = 10 m
 
 # ── Cylinders ─────────────────────────────────────────────────────────────────
-N = 30
-CYL_R = 0.30
+N = 15
+CYL_R = 0.25
 CYL_H = 1.00
 
 # ── Placement rules ───────────────────────────────────────────────────────────
-WALL_MARGIN = CYL_R + 0.5
-MIN_CYL_DIST = CYL_R * 2 + 2.0
+WALL_MARGIN = CYL_R + 1.5
+MIN_CYL_DIST = CYL_R * 2 + 1.5
+
+# ── Visual-only walls ─────────────────────────────────────────────────────────
+WALL_HEIGHT = 1.0
+WALL_THICKNESS = 0.1
 
 SPAWN_X = 0.0
 SPAWN_Y = 0.0
@@ -71,7 +76,6 @@ def cylinder_block(i, x, y):
       <pose>{x:.4f} {y:.4f} {CYL_H/2:.4f} 0 0 0</pose>
 
       <link name="link">
-
         <collision name="collision">
           <geometry>
             <cylinder>
@@ -94,16 +98,90 @@ def cylinder_block(i, x, y):
             <diffuse>0.2 0.2 0.8 1</diffuse>
             <specular>0 0 0 1</specular>
           </material>
-
         </visual>
-
       </link>
     </model>
     """
 
 
-def main():
+def visual_wall_block(name, x, y, z, sx, sy, sz):
+    return f"""
+    <model name="{name}">
+      <static>true</static>
+      <pose>{x:.4f} {y:.4f} {z:.4f} 0 0 0</pose>
+      <link name="link">
+        <visual name="v">
+          <geometry>
+            <box>
+              <size>{sx:.4f} {sy:.4f} {sz:.4f}</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.0 0.0 0.0 1</ambient>
+            <diffuse>0.0 0.0 0.0 1</diffuse>
+            <specular>0.02 0.02 0.02 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+    """
 
+
+def build_visual_walls():
+    walls = []
+
+    walls.append(
+        visual_wall_block(
+            name="wall_north",
+            x=0.0,
+            y=5.0,
+            z=0.5,
+            sx=42.0,
+            sy=0.1,
+            sz=1.0,
+        )
+    )
+
+    walls.append(
+        visual_wall_block(
+            name="wall_south",
+            x=0.0,
+            y=-5.0,
+            z=0.5,
+            sx=42.0,
+            sy=0.1,
+            sz=1.0,
+        )
+    )
+
+    walls.append(
+        visual_wall_block(
+            name="wall_east",
+            x=21.0,
+            y=0.0,
+            z=0.5,
+            sx=0.1,
+            sy=10.0,
+            sz=1.0,
+        )
+    )
+
+    walls.append(
+        visual_wall_block(
+            name="wall_west",
+            x=-21.0,
+            y=0.0,
+            z=0.5,
+            sx=0.1,
+            sy=10.0,
+            sz=1.0,
+        )
+    )
+
+    return "\n".join(walls)
+
+
+def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -135,6 +213,8 @@ def main():
         for i, (x, y) in enumerate(pts)
     )
 
+    walls_sdf = build_visual_walls()
+
     sdf = f"""<?xml version="1.0" ?>
 <sdf version="1.7">
   <world name="arena2">
@@ -146,6 +226,8 @@ def main():
     <include>
       <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sun</uri>
     </include>
+
+{walls_sdf}
 
 {cylinders_sdf}
 

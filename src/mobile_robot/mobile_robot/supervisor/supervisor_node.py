@@ -7,7 +7,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import BatteryState, LaserScan
-from std_msgs.msg import Bool, Float32MultiArray
+from std_msgs.msg import Bool, Float32MultiArray, String
 
 
 def zero_twist() -> Twist:
@@ -64,6 +64,11 @@ class SupervisorArbiter(Node):
     LOW_BATT_ALLOW_ONE_VISIT = "ALLOW_ONE_VISIT"
     LOW_BATT_FORCE_RECHARGE = "FORCE_RECHARGE"
 
+    MODE_CODE_UNKNOWN = -1.0
+    MODE_CODE_NORMAL = 0.0
+    MODE_CODE_ALLOW_ONE_VISIT = 1.0
+    MODE_CODE_FORCE_RECHARGE = 2.0
+
     def __init__(self):
         super().__init__("supervisor_node")
 
@@ -76,8 +81,7 @@ class SupervisorArbiter(Node):
         # -----------------------------
         # Parameters: battery decision
         # -----------------------------
-        self.declare_parameter("decision_battery_threshold", 0.25)   # 25%
-        self.declare_parameter("reset_battery_threshold", 0.30)      # hysteresis reset
+        self.declare_parameter("decision_battery_threshold", 0.25)
         self.declare_parameter("reserve_battery_fraction", 0.08)
 
         self.declare_parameter("default_drain_per_meter", 0.015)
@@ -101,7 +105,6 @@ class SupervisorArbiter(Node):
         self.cmd_timeout = float(self.get_parameter("cmd_timeout_sec").value)
 
         self.decision_battery_threshold = float(self.get_parameter("decision_battery_threshold").value)
-        self.reset_battery_threshold = float(self.get_parameter("reset_battery_threshold").value)
         self.reserve_battery_fraction = float(self.get_parameter("reserve_battery_fraction").value)
 
         self.default_drain_per_meter = float(self.get_parameter("default_drain_per_meter").value)
@@ -132,7 +135,6 @@ class SupervisorArbiter(Node):
         self.depart_active = False
         self.depart_end_time = None
 
-        # Low-battery latched mode
         self.low_batt_mode = self.LOW_BATT_NORMAL
         self.low_batt_decision_made = False
         self.allowed_visit_consumed = False
@@ -176,11 +178,8 @@ class SupervisorArbiter(Node):
         # -----------------------------
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.supervisor_active_pub = self.create_publisher(Bool, "/supervisor_active", 10)
-        self.decision_metrics_pub = self.create_publisher(
-            Float32MultiArray,
-            "/decision_metrics",
-            10
-        )
+        self.decision_metrics_pub = self.create_publisher(Float32MultiArray, "/decision_metrics", 10)
+        self.event_pub = self.create_publisher(String, "/supervisor_events", 10)
 
         # -----------------------------
         # Subscriptions (candidates)
@@ -207,12 +206,20 @@ class SupervisorArbiter(Node):
         self.create_subscription(LaserScan, "/scan", self._cb_scan, 10)
         self.create_subscription(Float32MultiArray, "/detected_objects", self._cb_detected_objects, 10)
 
-        # Main arbitration loop
         self.create_timer(1.0 / self.rate_hz, self._tick)
 
         self.get_logger().info(
             "SupervisorArbiter running with latched low-battery decision logic."
         )
+        self._publish_event("SUPERVISOR_START")
+
+    # -----------------------------
+    # Event publisher
+    # -----------------------------
+    def _publish_event(self, text: str):
+        msg = String()
+        msg.data = text
+        self.event_pub.publish(msg)
 
     # -----------------------------
     # Decision metrics publisher
@@ -221,27 +228,33 @@ class SupervisorArbiter(Node):
         """
         Publishes decision metrics in this fixed order:
 
-        [0]  score
-        [1]  extra_distance
-        [2]  margin
-        [3]  obj_distance
-        [4]  obj_to_charger_distance
-        [5]  decision_mode_code
+        [0] score
+        [1] extra_distance
+        [2] margin
+        [3] obj_distance
+        [4] obj_to_charger_distance
+        [5] predicted_drain
+        [6] battery_pct
+        [7] decision_mode_code
 
         decision_mode_code:
+            0.0 -> NORMAL / no forced low-battery decision active
             1.0 -> ALLOW_ONE_VISIT
             2.0 -> FORCE_RECHARGE
+           -1.0 -> UNKNOWN
         """
         msg = Float32MultiArray()
 
         if best_candidate is None:
             msg.data = [
-                float("nan"),  # score
-                float("nan"),  # extra_distance
-                float("nan"),  # margin
-                float("nan"),  # obj_distance
-                float("nan"),  # obj_to_charger_distance
-                float(decision_mode_code),
+                float("nan"),                 # score
+                float("nan"),                 # extra_distance
+                float("nan"),                 # margin
+                float("nan"),                 # obj_distance
+                float("nan"),                 # obj_to_charger_distance
+                float(self.drain_per_meter),  # predicted_drain
+                float(self.battery_fraction), # battery_pct
+                float(decision_mode_code),    # decision_mode_code
             ]
         else:
             msg.data = [
@@ -250,6 +263,8 @@ class SupervisorArbiter(Node):
                 float(best_candidate.get("margin", float("nan"))),
                 float(best_candidate.get("obj_distance", float("nan"))),
                 float(best_candidate.get("obj_to_charger_distance", float("nan"))),
+                float(self.drain_per_meter),
+                float(self.battery_fraction),
                 float(decision_mode_code),
             ]
 
@@ -288,33 +303,48 @@ class SupervisorArbiter(Node):
     # Callbacks: gates
     # -----------------------------
     def _cb_recharge_active(self, msg: Bool):
+        old = self.recharge_active
         self.recharge_active = bool(msg.data)
+        if self.recharge_active != old:
+            self._publish_event(f"RECHARGE_ACTIVE_{'ON' if self.recharge_active else 'OFF'}")
 
     def _cb_battery_charging(self, msg: Bool):
+        old = self.battery_charging
         self.battery_charging = bool(msg.data)
+        if self.battery_charging != old:
+            self._publish_event(f"BATTERY_CHARGING_{'START' if self.battery_charging else 'STOP'}")
 
     def _cb_navigation_paused(self, msg: Bool):
+        old = self.navigation_paused
         self.navigation_paused = bool(msg.data)
+        if self.navigation_paused != old:
+            self._publish_event(f"NAVIGATION_PAUSED_{'ON' if self.navigation_paused else 'OFF'}")
 
     def _cb_avoid_active(self, msg: Bool):
+        old = self.avoid_active
         self.avoid_active = bool(msg.data)
+        if self.avoid_active != old:
+            self._publish_event(f"AVOID_ACTIVE_{'ON' if self.avoid_active else 'OFF'}")
 
     def _cb_depart_request(self, msg: Bool):
         if not bool(msg.data):
             return
 
-        # If the one allowed visit has just completed, latch force-recharge after depart
+        self._publish_event("DEPART_REQUEST_RECEIVED")
+
         if self.low_batt_mode == self.LOW_BATT_ALLOW_ONE_VISIT and not self.allowed_visit_consumed:
             self.allowed_visit_consumed = True
             self.pending_force_recharge_after_depart = True
             self.get_logger().info(
                 "Allowed low-battery visit completed. Will force recharge after depart."
             )
+            self._publish_event("ALLOWED_VISIT_CONSUMED")
 
         if not self.depart_active:
             self.depart_active = True
             self.depart_end_time = self.get_clock().now() + rclpy.duration.Duration(seconds=1.0)
             self.get_logger().info("Depart request received: executing 1.0s reverse.")
+            self._publish_event("DEPART_START")
 
     # -----------------------------
     # Callbacks: state
@@ -448,25 +478,29 @@ class SupervisorArbiter(Node):
             best_candidate (dict or None)
         """
         if not (self.have_battery and self.have_odom):
+            self._publish_event("EVAL_SKIP_NO_BATTERY_OR_ODOM")
             return False, None
 
         station, dist_to_charger = self._nearest_station()
         if station is None:
+            self._publish_event("EVAL_SKIP_NO_CHARGING_STATION")
             return False, None
 
         sx, sy = station
         charger_bearing = self._world_to_robot_bearing(sx, sy)
 
-        # conservative: if even charger direction looks blocked nearby, do not allow detour
         if not self._direction_clear(charger_bearing, min(dist_to_charger, 2.0)):
+            self._publish_event("EVAL_REJECT_CHARGER_PATH_BLOCKED")
             return False, None
 
         remaining_usable = self.battery_fraction - self.reserve_battery_fraction
         if remaining_usable <= 0.0:
+            self._publish_event("EVAL_REJECT_NO_USABLE_BATTERY")
             return False, None
 
         direct_energy = dist_to_charger * self.drain_per_meter
         if direct_energy > remaining_usable:
+            self._publish_event("EVAL_REJECT_DIRECT_CHARGE_NOT_FEASIBLE")
             return False, None
 
         candidates = []
@@ -478,7 +512,6 @@ class SupervisorArbiter(Node):
 
             obj_bearing = math.atan2(yr, xr)
 
-            # only consider objects roughly along charger corridor
             if abs(wrap_to_pi(obj_bearing - charger_bearing)) > self.corridor_half_angle:
                 continue
 
@@ -516,56 +549,66 @@ class SupervisorArbiter(Node):
             })
 
         if not candidates:
+            self._publish_event("EVAL_REJECT_NO_FEASIBLE_OBJECT")
             return False, None
 
         best = max(candidates, key=lambda c: c["score"])
         if best["score"] <= 0.0:
+            self._publish_event("EVAL_REJECT_NONPOSITIVE_SCORE")
             return False, None
 
+        self._publish_event(
+            f"EVAL_ACCEPT_BEST score={best['score']:.3f} "
+            f"obj_d={best['obj_distance']:.2f} extra_d={best['extra_distance']:.2f} "
+            f"margin={best['margin']:.3f}"
+        )
         return True, best
 
     def _log_mode_once(self, text: str):
         if text != self.last_logged_mode:
             self.last_logged_mode = text
             self.get_logger().info(text)
+            self._publish_event(text)
 
     def _update_low_battery_state(self):
         """
         Latched logic:
           - NORMAL -> evaluate once when battery crosses threshold
           - ALLOW_ONE_VISIT -> hold until depart after that visit
-          - FORCE_RECHARGE -> hold until battery goes above reset threshold while charging
+          - FORCE_RECHARGE -> hold until recharge_active clears
         """
         if not self.have_battery:
             return
 
-        # Reset after recharge / recovery with hysteresis
         if self.low_batt_mode == self.LOW_BATT_FORCE_RECHARGE:
-            if self.battery_charging and self.battery_fraction >= self.reset_battery_threshold:
+            if not self.recharge_active:
                 self.low_batt_mode = self.LOW_BATT_NORMAL
                 self.low_batt_decision_made = False
                 self.allowed_visit_consumed = False
                 self.pending_force_recharge_after_depart = False
                 self.best_candidate = None
+
+                self._publish_decision_metrics(None, self.MODE_CODE_NORMAL)
                 self._log_mode_once(
-                    f"LOW_BATTERY_RESET batt={self.battery_fraction:.3f}"
+                    f"LOW_BATTERY_RESET_AFTER_RECHARGE batt={self.battery_fraction:.3f}"
                 )
             return
 
-        # Transition to force recharge immediately after depart finishes
         if self.pending_force_recharge_after_depart and not self.depart_active:
             self.pending_force_recharge_after_depart = False
             self.low_batt_mode = self.LOW_BATT_FORCE_RECHARGE
             self.best_candidate = None
+
+            self._publish_decision_metrics(None, self.MODE_CODE_FORCE_RECHARGE)
             self._log_mode_once(
                 f"LOW_BATTERY_FORCE_RECHARGE batt={self.battery_fraction:.3f} "
                 f"drain_per_m={self.drain_per_meter:.4f}"
             )
             return
 
-        # Already allowed one visit: do not reevaluate every tick
         if self.low_batt_mode == self.LOW_BATT_ALLOW_ONE_VISIT:
             if self.best_candidate is not None:
+                self._publish_decision_metrics(self.best_candidate, self.MODE_CODE_ALLOW_ONE_VISIT)
                 self._log_mode_once(
                     f"LOW_BATTERY_ALLOW_ONE_VISIT "
                     f"score={self.best_candidate['score']:.3f} "
@@ -575,7 +618,6 @@ class SupervisorArbiter(Node):
                 )
             return
 
-        # NORMAL mode: evaluate once when battery crosses threshold
         if self.low_batt_mode == self.LOW_BATT_NORMAL:
             crossed = (
                 self.battery_fraction <= self.decision_battery_threshold
@@ -589,6 +631,10 @@ class SupervisorArbiter(Node):
             if not crossed:
                 return
 
+            self._publish_event(
+                f"LOW_BATTERY_THRESHOLD_CROSSED batt={self.battery_fraction:.3f}"
+            )
+
             allow_visit, best = self._evaluate_visit_before_recharge()
             self.low_batt_decision_made = True
 
@@ -598,8 +644,7 @@ class SupervisorArbiter(Node):
                 self.allowed_visit_consumed = False
                 self.pending_force_recharge_after_depart = False
 
-                self._publish_decision_metrics(best, 1.0)
-
+                self._publish_decision_metrics(best, self.MODE_CODE_ALLOW_ONE_VISIT)
                 self._log_mode_once(
                     f"LOW_BATTERY_ALLOW_ONE_VISIT "
                     f"score={best['score']:.3f} "
@@ -613,8 +658,7 @@ class SupervisorArbiter(Node):
                 self.allowed_visit_consumed = False
                 self.pending_force_recharge_after_depart = False
 
-                self._publish_decision_metrics(None, 2.0)
-
+                self._publish_decision_metrics(None, self.MODE_CODE_FORCE_RECHARGE)
                 self._log_mode_once(
                     f"LOW_BATTERY_FORCE_RECHARGE batt={self.battery_fraction:.3f} "
                     f"drain_per_m={self.drain_per_meter:.4f}"
@@ -626,12 +670,8 @@ class SupervisorArbiter(Node):
     def _tick(self):
         now = self.get_clock().now()
 
-        # Update latched battery state machine first
         self._update_low_battery_state()
 
-        # -----------------------------
-        # Depart has absolute priority
-        # -----------------------------
         if self.depart_active:
             if self.depart_end_time is not None and now >= self.depart_end_time:
                 self.depart_active = False
@@ -639,6 +679,7 @@ class SupervisorArbiter(Node):
                 self.cmd_pub.publish(zero_twist())
                 self.supervisor_active_pub.publish(Bool(data=False))
                 self.get_logger().info("Depart complete: releasing control.")
+                self._publish_event("DEPART_COMPLETE")
                 return
 
             cmd = Twist()
@@ -648,21 +689,12 @@ class SupervisorArbiter(Node):
             self.supervisor_active_pub.publish(Bool(data=True))
             return
 
-        # Recharge command readiness
         recharge_cmd_ready = self._fresh(self.recharge, now)
-
-        # Effective recharge mode:
-        #   - real recharge_active always wins
-        #   - forced recharge only takes control when recharge command exists
         forced_recharge = (self.low_batt_mode == self.LOW_BATT_FORCE_RECHARGE)
         effective_recharge_mode = self.recharge_active or (forced_recharge and recharge_cmd_ready)
 
-        # pause legacy/nav behavior while real or forced recharge is taking over
         self.supervisor_active_pub.publish(Bool(data=effective_recharge_mode))
 
-        # -----------------------------
-        # RECHARGE MODE
-        # -----------------------------
         if effective_recharge_mode:
             soft_allowed = (not self.battery_charging)
 
@@ -677,18 +709,10 @@ class SupervisorArbiter(Node):
             self.cmd_pub.publish(zero_twist())
             return
 
-        # -----------------------------
-        # If forced recharge is latched but recharge cmd is not ready yet:
-        # hold position instead of continuing normal nav.
-        # This avoids going to a new person target after recharge decision.
-        # -----------------------------
         if forced_recharge and not recharge_cmd_ready:
             self.cmd_pub.publish(zero_twist())
             return
 
-        # -----------------------------
-        # NORMAL MODE
-        # -----------------------------
         if self.avoid_active and self._fresh(self.avoid, now):
             self.cmd_pub.publish(self.avoid.msg)
             return

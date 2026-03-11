@@ -1,0 +1,3 @@
+time_s	score	extra_distance	margin	obj_distance	obj_to_charger_distance	predicted_drain	battery_pct	decision_mode_code
+832.051	nan	nan	nan	nan	nan	0.04125828668475151	0.24999238550662994	2.0
+1005.051	nan	nan	nan	nan	nan	0.003243583720177412	0.9803376793861389	0.0

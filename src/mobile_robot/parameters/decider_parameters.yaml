@@ -1,5 +1,4 @@
-
-ros2 launch mobile_robot gazebo_model.launch.pysupervisor_node:
+supervisor_node:
   ros__parameters:
 
     # Supervisor decision update frequency (Hz)
@@ -9,22 +8,19 @@ ros2 launch mobile_robot gazebo_model.launch.pysupervisor_node:
     cmd_timeout_sec: 0.35
 
     # Battery level that triggers recharge decision logic
-    decision_battery_threshold: 0.30
-
-    # Battery level that exits recharge mode
-    reset_battery_threshold: 0.36
+    decision_battery_threshold: 0.25
 
     # Safety battery margin reserved to reach a charger
-    reserve_battery_fraction: 0.10
+    reserve_battery_fraction: 0.08
 
     # Initial estimate of battery consumption per meter
-    default_drain_per_meter: 0.006
+    default_drain_per_meter: 0.02
 
     # Smoothing factor for updating drain estimate
-    drain_alpha: 0.20
+    drain_alpha: 0.10
 
     # Minimum motion required to update drain estimate
-    min_motion_for_drain_update: 0.15
+    min_motion_for_drain_update: 0.2
 
     # Reward assigned for visiting an object
     visit_reward: 1.0
@@ -36,19 +32,19 @@ ros2 launch mobile_robot gazebo_model.launch.pysupervisor_node:
     margin_weight: 2.5
 
     # Half-angle of corridor toward charger for considering objects
-    corridor_half_angle_deg: 35.0
+    corridor_half_angle_deg: 25.0
 
     # Distance within which an object counts as visited
     target_capture_radius: 0.9
 
     # Extra safety clearance used in LiDAR obstacle checks
-    lidar_clearance_margin: 0.35
+    lidar_clearance_margin: 0.25
 
     # LiDAR angular window used to evaluate path clearance
-    scan_window_deg: 10.0
+    scan_window_deg: 8.0
 
     # Maximum distance for considering objects as visit targets
-    max_object_considered_m: 4.5
+    max_object_considered_m: 3.0
 
     # Charging station coordinates [x1, y1, x2, y2, ...]
     charging_stations: [-20.0, 0.0, 20.0, 0.0]

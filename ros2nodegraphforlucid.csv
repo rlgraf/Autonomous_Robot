@@ -1,0 +1,285 @@
+/auto_recharge_node
+  Subscribers:
+    /battery_status: sensor_msgs/msg/BatteryState
+    /clock: rosgraph_msgs/msg/Clock
+    /navigation_paused: std_msgs/msg/Bool
+    /odom_gt: nav_msgs/msg/Odometry
+  Publishers:
+    /cmd_vel_recharge: geometry_msgs/msg/Twist
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /recharge_active: std_msgs/msg/Bool
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /auto_recharge_node/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /auto_recharge_node/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /auto_recharge_node/get_parameters: rcl_interfaces/srv/GetParameters
+    /auto_recharge_node/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /auto_recharge_node/list_parameters: rcl_interfaces/srv/ListParameters
+    /auto_recharge_node/set_parameters: rcl_interfaces/srv/SetParameters
+    /auto_recharge_node/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/avoid_while_interact
+  Subscribers:
+    /battery_charging: std_msgs/msg/Bool
+    /clock: rosgraph_msgs/msg/Clock
+    /recharge_active: std_msgs/msg/Bool
+    /scan: sensor_msgs/msg/LaserScan
+  Publishers:
+    /avoid_active: std_msgs/msg/Bool
+    /cmd_vel_avoid: geometry_msgs/msg/Twist
+    /navigation_paused: std_msgs/msg/Bool
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /avoid_while_interact/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /avoid_while_interact/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /avoid_while_interact/get_parameters: rcl_interfaces/srv/GetParameters
+    /avoid_while_interact/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /avoid_while_interact/list_parameters: rcl_interfaces/srv/ListParameters
+    /avoid_while_interact/set_parameters: rcl_interfaces/srv/SetParameters
+    /avoid_while_interact/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/battery_node
+  Subscribers:
+    /odom_gt: nav_msgs/msg/Odometry
+  Publishers:
+    /battery_charging: std_msgs/msg/Bool
+    /battery_depleted: std_msgs/msg/Bool
+    /battery_status: sensor_msgs/msg/BatteryState
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /battery_node/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /battery_node/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /battery_node/get_parameters: rcl_interfaces/srv/GetParameters
+    /battery_node/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /battery_node/list_parameters: rcl_interfaces/srv/ListParameters
+    /battery_node/set_parameters: rcl_interfaces/srv/SetParameters
+    /battery_node/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/data_logger
+  Subscribers:
+    /battery_charging: std_msgs/msg/Bool
+    /battery_status: sensor_msgs/msg/BatteryState
+    /clock: rosgraph_msgs/msg/Clock
+    /decision_metrics: std_msgs/msg/Float32MultiArray
+    /odom_gt: nav_msgs/msg/Odometry
+    /supervisor_events: std_msgs/msg/String
+  Publishers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /data_logger/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /data_logger/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /data_logger/get_parameters: rcl_interfaces/srv/GetParameters
+    /data_logger/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /data_logger/list_parameters: rcl_interfaces/srv/ListParameters
+    /data_logger/set_parameters: rcl_interfaces/srv/SetParameters
+    /data_logger/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/identify5
+  Subscribers:
+    /clock: rosgraph_msgs/msg/Clock
+    /odom_gt: nav_msgs/msg/Odometry
+    /scan: sensor_msgs/msg/LaserScan
+  Publishers:
+    /detected_objects: std_msgs/msg/Float32MultiArray
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /perception_alive: std_msgs/msg/Bool
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /identify5/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /identify5/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /identify5/get_parameters: rcl_interfaces/srv/GetParameters
+    /identify5/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /identify5/list_parameters: rcl_interfaces/srv/ListParameters
+    /identify5/set_parameters: rcl_interfaces/srv/SetParameters
+    /identify5/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/move5
+  Subscribers:
+    /clock: rosgraph_msgs/msg/Clock
+    /detected_objects: std_msgs/msg/Float32MultiArray
+    /navigation_paused: std_msgs/msg/Bool
+    /odom_gt: nav_msgs/msg/Odometry
+    /supervisor_active: std_msgs/msg/Bool
+  Publishers:
+    /cmd_vel_nav: geometry_msgs/msg/Twist
+    /depart_request: std_msgs/msg/Bool
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /visited_columns: std_msgs/msg/Float32MultiArray
+  Service Servers:
+    /move5/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /move5/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /move5/get_parameters: rcl_interfaces/srv/GetParameters
+    /move5/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /move5/list_parameters: rcl_interfaces/srv/ListParameters
+    /move5/set_parameters: rcl_interfaces/srv/SetParameters
+    /move5/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/odom_gt_bridge
+  Subscribers:
+    /odom_gt: nav_msgs/msg/Odometry
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /odom_gt: nav_msgs/msg/Odometry
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /odom_gt_bridge/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /odom_gt_bridge/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /odom_gt_bridge/get_parameters: rcl_interfaces/srv/GetParameters
+    /odom_gt_bridge/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /odom_gt_bridge/list_parameters: rcl_interfaces/srv/ListParameters
+    /odom_gt_bridge/set_parameters: rcl_interfaces/srv/SetParameters
+    /odom_gt_bridge/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/robot_state_publisher
+  Subscribers:
+    /clock: rosgraph_msgs/msg/Clock
+    /joint_states: sensor_msgs/msg/JointState
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /robot_description: std_msgs/msg/String
+    /rosout: rcl_interfaces/msg/Log
+    /tf: tf2_msgs/msg/TFMessage
+    /tf_static: tf2_msgs/msg/TFMessage
+  Service Servers:
+    /robot_state_publisher/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /robot_state_publisher/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /robot_state_publisher/get_parameters: rcl_interfaces/srv/GetParameters
+    /robot_state_publisher/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /robot_state_publisher/list_parameters: rcl_interfaces/srv/ListParameters
+    /robot_state_publisher/set_parameters: rcl_interfaces/srv/SetParameters
+    /robot_state_publisher/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/ros_gz_bridge
+  Subscribers:
+    /cmd_vel: geometry_msgs/msg/Twist
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /battery_state: sensor_msgs/msg/BatteryState
+    /clock: rosgraph_msgs/msg/Clock
+    /joint_states: sensor_msgs/msg/JointState
+    /odom: nav_msgs/msg/Odometry
+    /odom_gt: nav_msgs/msg/Odometry
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /scan: sensor_msgs/msg/LaserScan
+    /tf: tf2_msgs/msg/TFMessage
+  Service Servers:
+    /ros_gz_bridge/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /ros_gz_bridge/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /ros_gz_bridge/get_parameters: rcl_interfaces/srv/GetParameters
+    /ros_gz_bridge/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /ros_gz_bridge/list_parameters: rcl_interfaces/srv/ListParameters
+    /ros_gz_bridge/set_parameters: rcl_interfaces/srv/SetParameters
+    /ros_gz_bridge/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/soft_obstacle_avoidance_node
+  Subscribers:
+    /clock: rosgraph_msgs/msg/Clock
+    /recharge_active: std_msgs/msg/Bool
+    /scan: sensor_msgs/msg/LaserScan
+  Publishers:
+    /cmd_vel_soft_avoid: geometry_msgs/msg/Twist
+    /navigation_paused: std_msgs/msg/Bool
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /soft_obstacle_avoidance_node/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /soft_obstacle_avoidance_node/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /soft_obstacle_avoidance_node/get_parameters: rcl_interfaces/srv/GetParameters
+    /soft_obstacle_avoidance_node/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /soft_obstacle_avoidance_node/list_parameters: rcl_interfaces/srv/ListParameters
+    /soft_obstacle_avoidance_node/set_parameters: rcl_interfaces/srv/SetParameters
+    /soft_obstacle_avoidance_node/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+/supervisor_node
+  Subscribers:
+    /avoid_active: std_msgs/msg/Bool
+    /battery_charging: std_msgs/msg/Bool
+    /battery_status: sensor_msgs/msg/BatteryState
+    /clock: rosgraph_msgs/msg/Clock
+    /cmd_vel_avoid: geometry_msgs/msg/Twist
+    /cmd_vel_nav: geometry_msgs/msg/Twist
+    /cmd_vel_recharge: geometry_msgs/msg/Twist
+    /cmd_vel_soft_avoid: geometry_msgs/msg/Twist
+    /depart_request: std_msgs/msg/Bool
+    /detected_objects: std_msgs/msg/Float32MultiArray
+    /navigation_paused: std_msgs/msg/Bool
+    /odom_gt: nav_msgs/msg/Odometry
+    /recharge_active: std_msgs/msg/Bool
+    /scan: sensor_msgs/msg/LaserScan
+  Publishers:
+    /cmd_vel: geometry_msgs/msg/Twist
+    /decision_metrics: std_msgs/msg/Float32MultiArray
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /supervisor_active: std_msgs/msg/Bool
+    /supervisor_events: std_msgs/msg/String
+  Service Servers:
+    /supervisor_node/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /supervisor_node/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /supervisor_node/get_parameters: rcl_interfaces/srv/GetParameters
+    /supervisor_node/get_type_description: type_description_interfaces/srv/GetTypeDescription
+    /supervisor_node/list_parameters: rcl_interfaces/srv/ListParameters
+    /supervisor_node/set_parameters: rcl_interfaces/srv/SetParameters
+    /supervisor_node/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:

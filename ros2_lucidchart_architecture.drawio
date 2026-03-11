@@ -1,0 +1,126 @@
+<mxfile host="app.diagrams.net" modified="2026-03-10T00:00:00.000Z" agent="Python" version="24.7.17" type="device">
+  <diagram id="ros2arch" name="ROS2 Architecture">
+    <mxGraphModel dx="1564" dy="906" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" /><mxCell id="1" parent="0" /><mxCell id="ros_gz_bridge" value="ros_gz_bridge
+Publishes: /clock, /scan, /odom_gt, /odom, /joint_states
+Subscribes: /cmd_vel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0e0e0;strokeColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="620" y="720" width="220" height="110" as="geometry" />
+    </mxCell><mxCell id="robot_state_publisher" value="robot_state_publisher
+Subscribes: /joint_states, /clock
+Publishes: /tf, /tf_static, /robot_description" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0e0e0;strokeColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="890" y="720" width="220" height="110" as="geometry" />
+    </mxCell><mxCell id="odom_gt_bridge" value="odom_gt_bridge
+Bridge/helper for /odom_gt" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0e0e0;strokeColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="360" y="740" width="180" height="70" as="geometry" />
+    </mxCell><mxCell id="identify5" value="identify5
+Sub: /odom_gt, /scan, /clock
+Pub: /detected_objects, /perception_alive" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="60" y="110" width="220" height="100" as="geometry" />
+    </mxCell><mxCell id="move5" value="move5
+Sub: /detected_objects, /odom_gt,
+/navigation_paused, /supervisor_active, /clock
+Pub: /cmd_vel_nav, /depart_request, /visited_columns" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="60" y="300" width="240" height="120" as="geometry" />
+    </mxCell><mxCell id="soft_avoid" value="soft_obstacle_avoidance_node
+Sub: /scan, /recharge_active, /clock
+Pub: /cmd_vel_soft_avoid, /navigation_paused" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="1010" y="120" width="250" height="100" as="geometry" />
+    </mxCell><mxCell id="avoid_interact" value="avoid_while_interact
+Sub: /scan, /battery_charging,
+/recharge_active, /clock
+Pub: /cmd_vel_avoid, /avoid_active, /navigation_paused" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="1010" y="270" width="250" height="110" as="geometry" />
+    </mxCell><mxCell id="battery_node" value="battery_node
+Sub: /odom_gt
+Pub: /battery_status, /battery_charging,
+/battery_depleted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="1010" y="460" width="250" height="100" as="geometry" />
+    </mxCell><mxCell id="auto_recharge" value="auto_recharge_node
+Sub: /battery_status, /odom_gt,
+/navigation_paused, /clock
+Pub: /cmd_vel_recharge, /recharge_active" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="1010" y="610" width="250" height="110" as="geometry" />
+    </mxCell><mxCell id="supervisor" value="supervisor_node
+Arbitrates navigation, avoidance,
+and recharge commands
+Pub: /cmd_vel, /decision_metrics,
+/supervisor_active, /supervisor_events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4cccc;strokeColor=#cc0000;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="520" y="290" width="280" height="140" as="geometry" />
+    </mxCell><mxCell id="data_logger" value="data_logger
+Sub: /battery_status, /battery_charging,
+/decision_metrics, /supervisor_events,
+/odom_gt, /clock" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0e0e0;strokeColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="1330" y="360" width="240" height="110" as="geometry" />
+    </mxCell><mxCell id="title" value="ROS2 Architecture for Autonomous Navigation,
+Obstacle Avoidance, Recharge, and Supervisory Control" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="350" y="20" width="650" height="55" as="geometry" />
+    </mxCell><mxCell id="e1" value="/scan, /odom_gt, /clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="identify5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e2" value="/odom_gt, /clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="move5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e3" value="/scan, /clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="soft_avoid">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e4" value="/scan, /clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="avoid_interact">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e5" value="/odom_gt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="battery_node">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e6" value="/odom_gt, /clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="auto_recharge">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e7" value="/scan, /odom_gt, /clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e8" value="/joint_states, /clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="robot_state_publisher">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e9" value="/odom_gt, /clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="ros_gz_bridge" target="data_logger">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e10" value="/detected_objects" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="identify5" target="move5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e11" value="/detected_objects" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="identify5" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e12" value="/cmd_vel_nav" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="move5" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e13" value="/depart_request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="move5" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e14" value="/cmd_vel_soft_avoid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="soft_avoid" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e15" value="/navigation_paused" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="soft_avoid" target="move5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e16" value="/navigation_paused" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="soft_avoid" target="auto_recharge">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e17" value="/navigation_paused" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="soft_avoid" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e18" value="/cmd_vel_avoid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="avoid_interact" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e19" value="/avoid_active" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="avoid_interact" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e20" value="/navigation_paused" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="avoid_interact" target="move5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e21" value="/navigation_paused" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="avoid_interact" target="auto_recharge">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e22" value="/battery_status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="battery_node" target="auto_recharge">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e23" value="/battery_charging" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="battery_node" target="avoid_interact">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e24" value="/battery_status, /battery_charging" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="battery_node" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e25" value="/cmd_vel_recharge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="auto_recharge" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e26" value="/recharge_active" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="auto_recharge" target="soft_avoid">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e27" value="/recharge_active" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="auto_recharge" target="avoid_interact">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e28" value="/recharge_active" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="auto_recharge" target="supervisor">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e29" value="/supervisor_active" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="supervisor" target="move5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e30" value="/cmd_vel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="supervisor" target="ros_gz_bridge">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e31" value="/decision_metrics, /supervisor_events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="supervisor" target="data_logger">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell><mxCell id="e32" value="/battery_status, /battery_charging" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="battery_node" target="data_logger">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

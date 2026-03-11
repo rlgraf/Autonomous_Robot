@@ -1,5 +1,5 @@
 ROS PACKAGE STRUCTURE SUMMARY
-Generated: 2026-03-07 17:35:31
+Generated: 2026-03-09 21:25:43
 Root: /home/corelab/Autonomous_Robot
 
 ============================================================
@@ -40,8 +40,7 @@ mobile_robot/
 ├── launch/
 │   ├── gazebo_model.launch.py
 │   ├── gazebo_model2.launch.py
-│   ├── Gazebolaunchbashscript.yaml
-│   └── simple_avoid_obstacle.launch.py
+│   └── Gazebolaunchbashscript.yaml
 ├── mobile_robot/
 │   ├── battery_behavior/
 │   │   ├── __init__.py
@@ -144,17 +143,6 @@ gazebo_model2.launch.py
     - supervisor_node
   parameter blocks: 7
 
-simple_avoid_obstacle.launch.py
-  Purpose:
-    - standalone obstacle avoidance test
-
-  Nodes:
-    - mobile_robot / simple_avoid_obstacle
-
-  Names:
-    - simple_avoid_obstacle
-  parameter blocks: 1
-
 ============================================================
 NODE STRUCTURE
 ============================================================
@@ -181,9 +169,9 @@ battery_behavior
 
 
 people_behavior
-  - obstacle_avoidance
+  - avoid_while_interact
       publishes: /cmd_vel_avoid [Twist], /navigation_paused [Bool], /avoid_active [Bool]
-      subscribes: /scan [LaserScan]
+      subscribes: /scan [LaserScan], /recharge_active [Bool], /battery_charging [Bool]
 
   - lidar_cluster_detector
       publishes: /perception_alive [Bool], /detected_objects [Float32MultiArray]
@@ -191,7 +179,7 @@ people_behavior
       timers: 1.0
 
   - object_navigator
-      publishes: /depart_request [Bool], /cmd_vel_nav [Twist]
+      publishes: /depart_request [Bool], /cmd_vel_nav [Twist], /visited_columns [Float32MultiArray]
       subscribes: /supervisor_active [Bool], /detected_objects [Float32MultiArray], /odom_gt [Odometry], /navigation_paused [Bool]
       parameters declared: angle_tol, base_angular_speed, base_linear_speed, detection_timeout, dist_tol, dwell_time, gain_multiplier, stop_distance, visited_radius
       parameters accessed: angle_tol, base_angular_speed, base_linear_speed, detection_timeout, dist_tol, dwell_time, gain_multiplier, stop_distance, visited_radius
@@ -200,16 +188,16 @@ people_behavior
 
 supervisor
   - supervisor_node
-      publishes: /cmd_vel [Twist], /supervisor_active [Bool], /decision_metrics [Float32MultiArray]
+      publishes: /cmd_vel [Twist], /supervisor_active [Bool], /decision_metrics [Float32MultiArray], /supervisor_events [String]
       subscribes: /cmd_vel_nav [Twist], /cmd_vel_avoid [Twist], /cmd_vel_recharge [Twist], /cmd_vel_soft_avoid [Twist], /recharge_active [Bool], /battery_charging [Bool], /navigation_paused [Bool], /avoid_active [Bool], /depart_request [Bool], /battery_status [BatteryState], /odom_gt [Odometry], /scan [LaserScan], /detected_objects [Float32MultiArray]
-      parameters declared: charging_stations, cmd_timeout_sec, corridor_half_angle_deg, decision_battery_threshold, default_drain_per_meter, drain_alpha, extra_distance_weight, lidar_clearance_margin, margin_weight, max_object_considered_m, min_motion_for_drain_update, rate_hz, reserve_battery_fraction, reset_battery_threshold, scan_window_deg, target_capture_radius, visit_reward
-      parameters accessed: charging_stations, cmd_timeout_sec, corridor_half_angle_deg, decision_battery_threshold, default_drain_per_meter, drain_alpha, extra_distance_weight, lidar_clearance_margin, margin_weight, max_object_considered_m, min_motion_for_drain_update, rate_hz, reserve_battery_fraction, reset_battery_threshold, scan_window_deg, target_capture_radius, visit_reward
+      parameters declared: charging_stations, cmd_timeout_sec, corridor_half_angle_deg, decision_battery_threshold, default_drain_per_meter, drain_alpha, extra_distance_weight, lidar_clearance_margin, margin_weight, max_object_considered_m, min_motion_for_drain_update, rate_hz, reserve_battery_fraction, scan_window_deg, target_capture_radius, visit_reward
+      parameters accessed: charging_stations, cmd_timeout_sec, corridor_half_angle_deg, decision_battery_threshold, default_drain_per_meter, drain_alpha, extra_distance_weight, lidar_clearance_margin, margin_weight, max_object_considered_m, min_motion_for_drain_update, rate_hz, reserve_battery_fraction, scan_window_deg, target_capture_radius, visit_reward
       timers: 1.0
 
 
 other
   - data_logger
-      subscribes: /odom_gt [Odometry], /battery_status [BatteryState], /battery_charging [Bool], /decision_metrics [Float32MultiArray]
+      subscribes: /odom_gt [Odometry], /battery_status [BatteryState], /battery_charging [Bool], /decision_metrics [Float32MultiArray], /supervisor_events [String]
       timers: 1.0
 
   - summary
@@ -228,8 +216,8 @@ Perception:
   - /odom_gt -> object_navigator
   - /odom_gt -> supervisor_node
   - lidar_cluster_detector -> /perception_alive
+  - /scan -> avoid_while_interact
   - /scan -> lidar_cluster_detector
-  - /scan -> obstacle_avoidance
   - /scan -> soft_obstacle_avoidance_node
   - /scan -> supervisor_node
 
@@ -240,16 +228,17 @@ Navigation / motion:
   - supervisor_node -> /supervisor_active -> object_navigator
 
 Interaction avoidance:
-  - obstacle_avoidance -> /avoid_active -> supervisor_node
-  - obstacle_avoidance -> /cmd_vel_avoid -> supervisor_node
-  - obstacle_avoidance -> /navigation_paused -> auto_recharge_node
-  - obstacle_avoidance -> /navigation_paused -> object_navigator
-  - obstacle_avoidance -> /navigation_paused -> supervisor_node
+  - avoid_while_interact -> /avoid_active -> supervisor_node
+  - avoid_while_interact -> /cmd_vel_avoid -> supervisor_node
+  - avoid_while_interact -> /navigation_paused -> auto_recharge_node
+  - avoid_while_interact -> /navigation_paused -> object_navigator
+  - avoid_while_interact -> /navigation_paused -> supervisor_node
   - soft_obstacle_avoidance_node -> /navigation_paused -> auto_recharge_node
   - soft_obstacle_avoidance_node -> /navigation_paused -> object_navigator
   - soft_obstacle_avoidance_node -> /navigation_paused -> supervisor_node
 
 Recharge / battery:
+  - battery_node -> /battery_charging -> avoid_while_interact
   - battery_node -> /battery_charging -> data_logger
   - battery_node -> /battery_charging -> supervisor_node
   - battery_node -> /battery_depleted
@@ -258,6 +247,7 @@ Recharge / battery:
   - battery_node -> /battery_status -> supervisor_node
   - auto_recharge_node -> /cmd_vel_recharge -> supervisor_node
   - soft_obstacle_avoidance_node -> /cmd_vel_soft_avoid -> supervisor_node
+  - auto_recharge_node -> /recharge_active -> avoid_while_interact
   - auto_recharge_node -> /recharge_active -> soft_obstacle_avoidance_node
   - auto_recharge_node -> /recharge_active -> supervisor_node
 
@@ -337,13 +327,14 @@ bridge_parameters.yaml
     - lazy
 
 decider_parameters.yaml
+  Sections:
+    - supervisor_node
   Keys:
-    - ros2 launch mobile_robot gazebo_model.launch.pysupervisor_node
+    - supervisor_node
     - ros__parameters
     - rate_hz
     - cmd_timeout_sec
     - decision_battery_threshold
-    - reset_battery_threshold
     - reserve_battery_fraction
     - default_drain_per_meter
     - drain_alpha

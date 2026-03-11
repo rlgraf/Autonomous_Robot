@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    gain_multiplier: 3.0
+    gain_multiplier: 1.0
     base_linear_speed: 0.5
     base_angular_speed: 0.8
     base_idle_drain_a: 1.0
@@ -13,14 +13,14 @@ battery_node:
     battery_voltage: 12.0
     publish_rate_hz: 10.0
     charge_rate_a: 40.0
-    charging_radius: 0.6
+    charging_radius: 0.5
     stationary_thresh: 0.05
     charging_station_x: [-20.0, 20.0]
     charging_station_y: [0.0, 0.0]
 
     color_idle.ambient: [0.0, 0.8, 0.0, 1.0]
-    color_idle.diffuse: [0.0, 0.0, 0.0, 1.0]
-    color_idle.specular: [0.0, 0.0, 0.0, 1.0]
+    color_idle.diffuse: [0.0, 0.8, 0.0, 1.0]
+    color_idle.specular: [0.0, 0.8, 0.0, 1.0]
 
     color_charging.ambient: [0.0, 0.0, 0.9, 1.0]
     color_charging.diffuse: [0.0, 0.0, 0.9, 1.0]
@@ -28,7 +28,7 @@ battery_node:
 
     color_full.ambient: [0.0, 0.4, 0.4, 0.2]
     color_full.diffuse: [0.0, 0.9, 0.9, 0.2]
-    color_full.specular: [0.0, 1.0, 1.0, 1.0]
+    color_full.specular: [0.0, 1.0, 1.0, 1.0] 
 
 move5:
   ros__parameters:

@@ -1,0 +1,7 @@
+time_s	event
+0.0	charging_start
+0.0	charging_stop
+0.0	charging_start
+10.795	charging_stop
+11.266	charging_start
+11.605	charging_stop

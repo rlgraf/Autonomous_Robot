@@ -6,10 +6,6 @@
 #   - /battery_status    (sensor_msgs/BatteryState)
 #   - /battery_charging  (std_msgs/Bool)
 #   - /battery_depleted  (std_msgs/Bool)
-#
-# IMPORTANT:
-#   - This node does NOT publish /cmd_vel
-#   - Parameters are loaded via ROS2 launch from battery_tunable_parameters.yaml
 ###############################################################################
 
 import math
@@ -32,19 +28,25 @@ DEFAULTS = {
     'battery_voltage': 12.0,
     'publish_rate_hz': 10.0,
     'charge_rate_a': 4.0,
-    'charging_radius': 0.6,
+    'charging_radius': 0.5,
     'stationary_thresh': 0.05,
-    'charging_station_x': [-9.0, 9.0],
+    'charging_station_x': [-20.0, 20.0],
     'charging_station_y': [0.0, 0.0],
-    'color_idle.ambient': [0.0, 0.8, 0.0, 1.0],
-    'color_idle.diffuse': [0.0, 0.0, 0.0, 1.0],
-    'color_idle.specular': [0.0, 0.0, 0.0, 1.0],
-    'color_charging.ambient': [0.0, 0.0, 0.9, 1.0],
-    'color_charging.diffuse': [0.0, 0.0, 0.9, 1.0],
-    'color_charging.specular': [0.0, 0.0, 0.9, 1.0],
-    'color_full.ambient': [0.0, 0.4, 0.4, 0.2],
-    'color_full.diffuse': [0.0, 0.9, 0.9, 0.2],
-    'color_full.specular': [0.0, 1.0, 1.0, 1.0],
+
+    # vacant = yellow
+    'color_idle.ambient': [1.0, 1.0, 0.0, 1.0],
+    'color_idle.diffuse': [1.0, 1.0, 0.0, 1.0],
+    'color_idle.specular': [0.2, 0.2, 0.0, 1.0],
+
+    # occupied and charging = blue
+    'color_charging.ambient': [0.0, 0.0, 1.0, 1.0],
+    'color_charging.diffuse': [0.0, 0.0, 1.0, 1.0],
+    'color_charging.specular': [0.2, 0.2, 0.2, 1.0],
+
+    # occupied and full = green
+    'color_full.ambient': [0.0, 1.0, 0.0, 1.0],
+    'color_full.diffuse': [0.0, 1.0, 0.0, 1.0],
+    'color_full.specular': [0.2, 0.2, 0.2, 1.0],
 }
 
 
@@ -113,7 +115,7 @@ class BatteryNode(Node):
         self._charging_pub = self.create_publisher(Bool, '/battery_charging', 10)
         self._depleted_pub = self.create_publisher(Bool, '/battery_depleted', 10)
 
-        self._init_timer = self.create_timer(0.5, self._lookup_station_ids)
+        self._init_timer = self.create_timer(1.0, self._lookup_station_ids)
         self.create_timer(1.0 / self._rate_hz, self._update_battery)
 
         self.get_logger().info('Battery node started.')
@@ -140,8 +142,7 @@ class BatteryNode(Node):
 
     def _at_charging_station(self) -> bool:
         for sx, sy in self._stations:
-            dist = math.hypot(self._pos_x - sx, self._pos_y - sy)
-            if dist <= self._chg_radius:
+            if math.hypot(self._pos_x - sx, self._pos_y - sy) <= self._chg_radius:
                 return True
         return False
 
@@ -149,48 +150,80 @@ class BatteryNode(Node):
         speed = math.hypot(self._linear_vel, self._angular_vel)
         return speed < self._stat_thresh
 
+    def _scene_info_text(self):
+        result = subprocess.run(
+            [
+                'gz', 'service',
+                '-s', '/world/arena2/scene/info',
+                '--reqtype', 'gz.msgs.Empty',
+                '--reptype', 'gz.msgs.Scene',
+                '--timeout', '2000',
+                '--req', ''
+            ],
+            capture_output=True, text=True, timeout=5.0
+        )
+        return result.stdout
+
+    def _extract_station_block(self, scene_text: str, station_name: str):
+        marker = f'name: "{station_name}"'
+        start = scene_text.find(marker)
+        if start == -1:
+            return None
+
+        next_model = scene_text.find('\nmodel {', start + len(marker))
+        if next_model == -1:
+            return scene_text[start:]
+        return scene_text[start:next_model]
+
+    def _parse_first_visual_ids(self, text: str):
+        visual_idx = text.find('visual {')
+        if visual_idx == -1:
+            return None, None
+
+        visual_text = text[visual_idx:visual_idx + 500]
+        visual_id = self._parse_id(visual_text, 'id:')
+        parent_id = self._parse_id(visual_text, 'parent_id:')
+        return visual_id, parent_id
+
     def _lookup_station_ids(self):
         try:
-            result = subprocess.run(
-                [
-                    'gz', 'service',
-                    '-s', '/world/arena2/scene/info',
-                    '--reqtype', 'gz.msgs.Empty',
-                    '--reptype', 'gz.msgs.Scene',
-                    '--timeout', '2000',
-                    '--req', ''
-                ],
-                capture_output=True, text=True, timeout=5.0
-            )
-            scene_text = result.stdout
+            scene_text = self._scene_info_text()
+            all_found = True
 
-            found_any = False
             for i in range(len(self._stations)):
-                name = f'charging_station_{i}'
-                start = scene_text.find(f'name: "{name}"')
-                if start == -1:
+                station_name = f'charging_station_{i}'
+                block = self._extract_station_block(scene_text, station_name)
+                if block is None:
+                    all_found = False
                     continue
 
-                block = scene_text[start:start + 500]
-                visual_start = block.find('visual {')
-                if visual_start == -1:
+                visual_id, parent_id = self._parse_first_visual_ids(block)
+                if visual_id is None or parent_id is None:
+                    all_found = False
                     continue
 
-                visual_block = block[visual_start:visual_start + 200]
-                visual_id = self._parse_id(visual_block, 'id:')
-                parent_id = self._parse_id(visual_block, 'parent_id:')
+                old = self._station_ids.get(i)
+                new = (visual_id, parent_id)
 
-                if visual_id is not None and parent_id is not None:
-                    self._station_ids[i] = (visual_id, parent_id)
-                    found_any = True
+                if old != new:
+                    self._station_ids[i] = new
                     self.get_logger().info(
                         f'Station {i}: visual_id={visual_id} parent_id={parent_id}'
                     )
 
-            if found_any:
-                self._init_timer.cancel()
+            if len(self._station_ids) != len(self._stations):
+                all_found = False
+
+            if all_found:
+                self.get_logger().info('All charging station visual IDs resolved.')
+                try:
+                    self._init_timer.cancel()
+                except Exception:
+                    pass
+
                 for i in range(len(self._stations)):
-                    self._set_station_color(i, 'idle')
+                    self._station_states[i] = None
+                self._update_station_colors()
 
         except Exception as e:
             self.get_logger().warn(f'Failed to look up station IDs: {e}')
@@ -207,24 +240,27 @@ class BatteryNode(Node):
             return None
 
     def _update_station_colors(self):
+        full_thresh = 0.95 * self._capacity
+
         for i, (sx, sy) in enumerate(self._stations):
             dist = math.hypot(self._pos_x - sx, self._pos_y - sy)
-            at_this = dist <= self._chg_radius
+            occupied = dist <= self._chg_radius
 
-            if at_this and self._charging:
+            if occupied and self._charging:
                 new_state = 'charging'
-            elif at_this and self._charge_ah >= self._capacity * 0.95:
+            elif occupied and self._charge_ah >= full_thresh:
                 new_state = 'full'
             else:
                 new_state = 'idle'
 
             if new_state != self._station_states[i]:
-                self._station_states[i] = new_state
-                self._set_station_color(i, new_state)
+                ok = self._set_station_color(i, new_state)
+                if ok:
+                    self._station_states[i] = new_state
 
-    def _set_station_color(self, idx: int, state: str):
+    def _set_station_color(self, idx: int, state: str) -> bool:
         if idx not in self._station_ids:
-            return
+            return False
 
         visual_id, parent_id = self._station_ids[idx]
         col = self._colors[state]
@@ -243,7 +279,7 @@ class BatteryNode(Node):
         )
 
         try:
-            subprocess.run(
+            result = subprocess.run(
                 [
                     'gz', 'service',
                     '-s', '/world/arena2/visual_config',
@@ -252,10 +288,28 @@ class BatteryNode(Node):
                     '--timeout', '2000',
                     '--req', req
                 ],
-                timeout=3.0, capture_output=True
+                timeout=3.0,
+                capture_output=True,
+                text=True
             )
+
+            stdout = result.stdout or ''
+            stderr = result.stderr or ''
+
+            if result.returncode != 0 or 'data: true' not in stdout:
+                self.get_logger().warn(
+                    f'visual_config failed for station {idx} state={state}; refreshing IDs'
+                )
+                self._station_ids.pop(idx, None)
+                self._lookup_station_ids()
+                return False
+
+            return True
+
         except Exception as e:
             self.get_logger().warn(f'visual_config call failed: {e}')
+            self._station_ids.pop(idx, None)
+            return False
 
     def _update_battery(self):
         now = self.get_clock().now()
@@ -335,7 +389,6 @@ class BatteryNode(Node):
 
         self._update_station_colors()
         self._pub.publish(msg)
-
         self._charging_pub.publish(Bool(data=self._charging))
         self._depleted_pub.publish(Bool(data=self._battery_depleted))
 

@@ -99,7 +99,13 @@ class ObjectNavigator(Node):
 
         # Publishers / Subscribers
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel_nav', 10)
-
+        
+        self.visited_pub = self.create_publisher(
+            Float32MultiArray,
+            '/visited_columns',
+            10
+        )
+            
         self.create_subscription(
             Float32MultiArray, '/detected_objects',
             self.detection_callback, 10)
@@ -249,8 +255,13 @@ class ObjectNavigator(Node):
             return
 
         # Mark visited once
+        # Mark visited once
         if self.target_wx is not None and self.target_wy is not None:
             self.visited.append((self.target_wx, self.target_wy))
+
+            msg = Float32MultiArray()
+            msg.data = [self.target_wx, self.target_wy]
+            self.visited_pub.publish(msg)
 
         self.get_logger().info('Dwell complete. Requesting supervisor depart.')
 

@@ -6,12 +6,19 @@ cd /home/corelab/Autonomous_Robot || exit 1
 
 # Source ROS 2
 source /opt/ros/jazzy/setup.bash
+pkill -9 -f gz
+pkill -9 -f ign
+pkill -9 -f gazebo
+pkill -9 -f ros2
+pkill -9 -f mobile_robot
+pkill -9 -f parameter_bridge
 
 # To launch the Arena, Robot, Battery nodes
 rm -rf build install log
 colcon build --symlink-install
 source install/setup.bash
 ros2 launch mobile_robot gazebo_model.launch.py
+
 
 # To launch the 
 colcon build --symlink-install
