@@ -102,13 +102,33 @@ class DataLoggerNode(Node):
 
         # Timing
         self.start_time: Time = self.get_clock().now()
+        
+        # Simulation time scaling (real-time factor)
+        # Try to read from generated world file, default to 1.0
+        self.real_time_factor: float = 1.0
+        try:
+            # Try to read from the generated SDF file
+            import xml.etree.ElementTree as ET
+            world_file = "/tmp/arena_generated.sdf"
+            if os.path.exists(world_file):
+                tree = ET.parse(world_file)
+                root = tree.getroot()
+                physics = root.find(".//physics")
+                if physics is not None:
+                    rtf_elem = physics.find("real_time_factor")
+                    if rtf_elem is not None and rtf_elem.text:
+                        self.real_time_factor = float(rtf_elem.text)
+                        self.get_logger().info(f"Detected real-time factor: {self.real_time_factor}")
+        except Exception as e:
+            self.get_logger().warn(f"Could not read real-time factor from world file: {e}, using default 1.0")
 
         # ------------------------- Path tracking -------------------------
         self.latest_pose: Optional[Tuple[float, float, float]] = None  # (x, y, yaw)
         self.path_samples: List[Tuple[float, float, float, float]] = []  # (t, x, y, yaw)
 
         # ------------------------- ROS I/O -------------------------
-        self.create_subscription(Float32MultiArray, "/visited_cylinders", self._visited_callback, 10)
+        # Note: move5.py publishes to /visited_columns (not /visited_cylinders)
+        self.create_subscription(Float32MultiArray, "/visited_columns", self._visited_callback, 10)
         self.create_subscription(Bool, "/recharge_active", self._recharge_callback, 10)
         self.create_subscription(BatteryState, "battery_status", self._battery_callback, 10)
 
@@ -218,20 +238,27 @@ class DataLoggerNode(Node):
     def _visited_callback(self, msg: Float32MultiArray):
         """Record when robot completes dwelling at a cylinder."""
         if len(msg.data) < 2:
+            self.get_logger().warn(f"Received visited_columns message with insufficient data: {len(msg.data)} elements (need at least 2)")
             return
 
-        x, y = float(msg.data[0]), float(msg.data[1])
-        now = self.get_clock().now()
+        try:
+            x, y = float(msg.data[0]), float(msg.data[1])
+            now = self.get_clock().now()
 
-        if self.last_visit_time is not None:
-            dt = (now - self.last_visit_time).nanoseconds * 1e-9
-            dt -= self.dwell_time
-            self.total_travel_time += max(0.0, dt)
+            if self.last_visit_time is not None:
+                dt = (now - self.last_visit_time).nanoseconds * 1e-9
+                dt -= self.dwell_time
+                self.total_travel_time += max(0.0, dt)
 
-        self.visited_cylinders.append((x, y, now))
-        self.last_visit_time = now
+            self.visited_cylinders.append((x, y, now))
+            self.last_visit_time = now
 
-        self.get_logger().info(f"Cylinder visited at ({x:.2f}, {y:.2f}) - Total: {len(self.visited_cylinders)}")
+            self.get_logger().info(
+                f"Cylinder visited at ({x:.2f}, {y:+.2f}) - "
+                f"Total: {len(self.visited_cylinders)}/{len(self.cylinder_positions)}"
+            )
+        except (ValueError, IndexError) as e:
+            self.get_logger().error(f"Error parsing visited_columns message: {e}, data: {msg.data}")
 
     def _recharge_callback(self, msg: Bool):
         now = self.get_clock().now()
@@ -449,12 +476,18 @@ class DataLoggerNode(Node):
                 writer.writerow(["EXPERIMENT SUMMARY"])
                 writer.writerow(["Max Linear Speed (m/s)", f"{self.max_linear:.3f}"])
                 writer.writerow(["Max Angular Speed (rad/s)", f"{self.max_angular:.3f}"])
+                writer.writerow(["Real-Time Factor", f"{self.real_time_factor:.3f}"])
                 writer.writerow(["Recharge Trips", recharge_trip_count])
-                writer.writerow(["Cylinders Visited", f"{len(self.visited_cylinders)}/{len(self.cylinder_positions)}"])
+                writer.writerow(["Total Cylinders", len(self.cylinder_positions)])
+                writer.writerow(["Cylinders Visited", len(self.visited_cylinders)])
+                writer.writerow(["Cylinders Visited Ratio", f"{len(self.visited_cylinders)}/{len(self.cylinder_positions)}"])
                 writer.writerow([])
 
                 writer.writerow(["TIMING DATA"])
                 writer.writerow(["Total Simulation Time (s)", f"{total_sim_time:.3f}"])
+                if self.real_time_factor > 0:
+                    wall_clock_time = total_sim_time / self.real_time_factor
+                    writer.writerow(["Estimated Wall Clock Time (s)", f"{wall_clock_time:.3f}"])
                 writer.writerow(["Total Dwelling Time (s)", f"{total_dwell_time:.3f}"])
                 writer.writerow(["Total Travel Time Between Cylinders (s)", f"{self.total_travel_time:.3f}"])
                 writer.writerow(["Total Time To Reach Stations (s)", f"{total_time_to_stations:.3f}"])
@@ -529,6 +562,9 @@ class DataLoggerNode(Node):
 
                 writer.writerow(["VISITED CYLINDERS"])
                 writer.writerow(["Visit #", "X", "Y", "Arrival Time (s)", "Travel Time (s)"])
+                
+                if len(self.visited_cylinders) == 0:
+                    writer.writerow(["No cylinders visited during this run"])
 
                 for i, (x, y, arrival_time) in enumerate(self.visited_cylinders):
                     arrival_time_s = (arrival_time - self.start_time).nanoseconds * 1e-9

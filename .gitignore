@@ -22,3 +22,11 @@ venv/
 
 *.mp4
 *:Zone.Identifier
+
+# Data files
+src/mobile_robot/data/
+*.csv
+*.tsv
+cylinder_positions.txt
+run*.csv
+experiment_*.csv

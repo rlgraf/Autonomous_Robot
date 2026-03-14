@@ -293,6 +293,16 @@ def main():
     for i, (x, y) in enumerate(pts):
         print(f"  column_{i:02d} ({x:+.2f}, {y:+.2f})")
 
+    # Write cylinder positions to cache file for data logger
+    import os
+    cache_dir = os.path.expanduser("~/Autonomous_Robot/src/mobile_robot/data")
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_file = os.path.join(cache_dir, "cylinder_positions.txt")
+    with open(cache_file, "w") as f:
+        for x, y in pts:
+            f.write(f"{x},{y}\n")
+    print(f"\nCylinder positions written to: {cache_file}")
+
     cylinders_sdf = "\n".join(
         cylinder_block(i, x, y)
         for i, (x, y) in enumerate(pts)
