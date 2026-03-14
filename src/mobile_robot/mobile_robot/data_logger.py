@@ -122,12 +122,27 @@ class DataLoggerNode(Node):
         # ------------------------- Output file -------------------------
         data_dir = os.path.expanduser("~/Autonomous_Robot/src/mobile_robot/data")
         os.makedirs(data_dir, exist_ok=True)
-        # Generate unique filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.csv_file = os.path.join(data_dir, f"experiment_{timestamp}.csv")  # tab-delimited TSV
+        
+        # Find the next run number by checking existing files
+        run_number = 1
+        while True:
+            run_file = os.path.join(data_dir, f"run{run_number}.csv")
+            if not os.path.exists(run_file):
+                break
+            run_number += 1
+        
+        self.csv_file = os.path.join(data_dir, f"run{run_number}.csv")  # tab-delimited TSV
+        self.run_number = run_number
 
+        num_columns = len(self.cylinder_positions)
+        print(f"\n{'='*60}")
+        print(f"Data Logger: Run {run_number}")
+        print(f"Number of columns tested: {num_columns}")
+        print(f"Output file: {self.csv_file}")
+        print(f"{'='*60}\n")
+        
         self.get_logger().info(
-            f"Data logger ready. Tracking {len(self.cylinder_positions)} cylinders. "
+            f"Data logger ready. Run {run_number}. Tracking {num_columns} cylinders. "
             f"Logging to: {self.csv_file}"
         )
         
@@ -166,9 +181,17 @@ class DataLoggerNode(Node):
             self._shutdown_requested = True
             self.get_logger().warn(f"Received signal {signum}, saving data before shutdown...")
             try:
-                self.save_data()
+                if not self._data_saved:
+                    self.save_data()
+                    self._data_saved = True
+                    self.get_logger().info("Data saved successfully from signal handler")
             except Exception as e:
                 self.get_logger().error(f"Error saving data on shutdown: {e}")
+                # Try to save at least a partial file
+                try:
+                    self._emergency_save()
+                except Exception as e2:
+                    self.get_logger().error(f"Emergency save also failed: {e2}")
             # Don't call shutdown/exit here - let the main function's finally block handle it
             # Just set the flag so main() knows to save
 
@@ -533,9 +556,22 @@ class DataLoggerNode(Node):
                 for i, (t, x, y, yaw) in enumerate(self.path_samples):
                     writer.writerow([i + 1, f"{t:.3f}", f"{x:.6f}", f"{y:.6f}", f"{yaw:.6f}"])
 
+            num_columns_tested = len(self.cylinder_positions)
+            num_columns_visited = len(self.visited_cylinders)
+            
+            print(f"\n{'='*60}")
+            print(f"Run {self.run_number} Complete - Data saved to {self.csv_file}")
+            print(f"Number of columns tested: {num_columns_tested}")
+            print(f"Number of columns visited: {num_columns_visited}")
+            print(f"Summary: {num_columns_visited}/{num_columns_tested} cylinders, "
+                  f"{recharge_trip_count} trips, {total_sim_time:.1f}s total, "
+                  f"{self.total_charging_time:.1f}s charging, "
+                  f"{len(self.path_samples)} path samples")
+            print(f"{'='*60}\n")
+            
             self.get_logger().info(f"✓ Data saved to {self.csv_file}")
             self.get_logger().info(
-                f"Summary: {len(self.visited_cylinders)}/{len(self.cylinder_positions)} cylinders, "
+                f"Run {self.run_number}: {num_columns_visited}/{num_columns_tested} cylinders, "
                 f"{recharge_trip_count} trips, {total_sim_time:.1f}s total, "
                 f"{self.total_charging_time:.1f}s charging, "
                 f"{len(self.path_samples)} path samples"
@@ -544,6 +580,42 @@ class DataLoggerNode(Node):
 
         except Exception as e:
             self.get_logger().error(f"Failed to save data: {e}")
+            # Try emergency save as last resort
+            try:
+                self._emergency_save()
+            except Exception as e2:
+                self.get_logger().error(f"Emergency save also failed: {e2}")
+
+    def _emergency_save(self):
+        """Emergency save - write minimal data if full save fails."""
+        try:
+            num_columns_tested = len(self.cylinder_positions)
+            num_columns_visited = len(self.visited_cylinders)
+            
+            with open(self.csv_file, "w", newline="") as f:
+                writer = csv.writer(f, delimiter="\t")
+                writer.writerow(["# EMERGENCY SAVE - Partial Data"])
+                writer.writerow(["# Process was terminated unexpectedly"])
+                writer.writerow(["Run Number", self.run_number])
+                writer.writerow(["Number of Columns Tested", num_columns_tested])
+                writer.writerow(["Cylinders Visited", num_columns_visited])
+                writer.writerow(["Recharge Trips", len(self.recharge_trips)])
+                if self.visited_cylinders:
+                    writer.writerow(["VISITED CYLINDERS"])
+                    writer.writerow(["Visit #", "X", "Y"])
+                    for i, (x, y, _) in enumerate(self.visited_cylinders):
+                        writer.writerow([i + 1, f"{x:.3f}", f"{y:.3f}"])
+            
+            print(f"\n{'='*60}")
+            print(f"Run {self.run_number} - EMERGENCY SAVE")
+            print(f"Number of columns tested: {num_columns_tested}")
+            print(f"Number of columns visited: {num_columns_visited}")
+            print(f"Emergency partial data saved to {self.csv_file}")
+            print(f"{'='*60}\n")
+            
+            self.get_logger().warn(f"Emergency partial data saved to {self.csv_file}")
+        except Exception as e:
+            self.get_logger().error(f"Emergency save failed: {e}")
 
 
 def main(args=None):
@@ -558,15 +630,29 @@ def main(args=None):
         node.get_logger().error(f"[Data Logger] Exception occurred: {e}, saving data...")
         node._shutdown_requested = True
     finally:
-        # Always try to save data on shutdown
+        # Always try to save data on shutdown - this is the last chance
         if not hasattr(node, '_data_saved') or not node._data_saved:
             try:
+                node.get_logger().info("Saving data in finally block...")
                 node.save_data()
                 node._data_saved = True
+                node.get_logger().info("Data saved successfully in finally block")
             except Exception as e:
                 node.get_logger().error(f"Failed to save data in finally block: {e}")
-        node.destroy_node()
-        rclpy.shutdown()
+                # Last resort - try emergency save
+                try:
+                    node._emergency_save()
+                except Exception as e2:
+                    node.get_logger().error(f"Emergency save in finally block also failed: {e2}")
+        else:
+            node.get_logger().info("Data already saved, skipping save in finally block")
+        
+        try:
+            node.destroy_node()
+            rclpy.shutdown()
+        except Exception as e:
+            # If shutdown fails, at least we tried to save
+            node.get_logger().error(f"Error during node shutdown: {e}")
 
 
 if __name__ == "__main__":
