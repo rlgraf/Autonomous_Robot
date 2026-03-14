@@ -32,6 +32,24 @@ def generate_launch_description():
         description='Simulation speed multiplier (1.0 = normal, 2.0 = 2x speed, etc.)'
     )
 
+    # Declare launch arguments for robot spawn position
+    declare_robot_x = DeclareLaunchArgument(
+        'robot_x',
+        default_value='-20.0',
+        description='Robot spawn X coordinate (meters)'
+    )
+    declare_robot_y = DeclareLaunchArgument(
+        'robot_y',
+        default_value='-1.5',
+        description='Robot spawn Y coordinate (meters)'
+    )
+    declare_robot_z = DeclareLaunchArgument(
+        'robot_z',
+        default_value='0.0',
+        description='Robot spawn Z coordinate (meters)'
+    )
+
+
     robotXacroName = 'differential_drive_robot'
     namePackage = 'mobile_robot'
 
@@ -81,15 +99,18 @@ def generate_launch_description():
     )
 
     # Spawn robot
+    robot_x = LaunchConfiguration('robot_x')
+    robot_y = LaunchConfiguration('robot_y')
+    robot_z = LaunchConfiguration('robot_z')
     spawnModelNodeGazebo = Node(
         package='ros_gz_sim',
         executable='create',
         arguments=[
             '-name', robotXacroName,
             '-topic', 'robot_description',
-            '-x', '-20.0',
-            '-y', '-1.5',
-            '-z', '0.0',
+            '-x', robot_x,
+            '-y', robot_y,
+            '-z', robot_z,
         ],
         output='screen'
     )
@@ -203,6 +224,9 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     ld.add_action(declare_real_time_factor)
+    ld.add_action(declare_robot_x)
+    ld.add_action(declare_robot_y)
+    ld.add_action(declare_robot_z)
     ld.add_action(set_gz_resource_path)
     ld.add_action(nodeRobotStatePublisher)
     ld.add_action(generateWorld)
