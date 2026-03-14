@@ -776,34 +776,44 @@ class SupervisorArbiter(Node):
             self._publish_recommended_target(None)
         elif self.low_batt_mode == self.LOW_BATT_ALLOW_ONE_VISIT:
             # During ALLOW_ONE_VISIT mode, publish the battery-safe target
+            # This is critical: navigation must use the battery-safe target, not pick its own
             if self.best_candidate is not None:
-                # Validate that the target is still in detected objects (not stale)
+                # Validate that the target has world coordinates
                 target_wx = self.best_candidate.get("wx")
                 target_wy = self.best_candidate.get("wy")
-                if target_wx is not None and target_wy is not None:
-                    # Check if target is still reasonably close to a detected object
-                    # (object might have moved slightly, so use a tolerance)
-                    target_still_valid = False
-                    for xr, yr in self.detected_objects_robot:
-                        obj_wx, obj_wy = self._robot_to_world(xr, yr)
-                        dist = math.hypot(target_wx - obj_wx, target_wy - obj_wy)
-                        if dist < 1.0:  # Within 1m tolerance
-                            target_still_valid = True
-                            break
+                if target_wx is not None and target_wy is not None and \
+                   math.isfinite(target_wx) and math.isfinite(target_wy):
+                    # Publish the battery-safe target - this is the key fix
+                    # We publish even if validation fails, because the battery calculation
+                    # is more important than perfect object detection matching
+                    self._publish_recommended_target(self.best_candidate)
                     
-                    if target_still_valid:
-                        self._publish_recommended_target(self.best_candidate)
-                    else:
-                        # Target is stale, clear it
-                        self.get_logger().warn(
-                            f"Best candidate target ({target_wx:.2f}, {target_wy:.2f}) "
-                            "no longer in detected objects, clearing recommendation"
-                        )
-                        self.best_candidate = None
-                        self._publish_recommended_target(None)
+                    # Optional: Log if target doesn't match current detections (for debugging)
+                    if self.detected_objects_robot:
+                        target_still_valid = False
+                        for xr, yr in self.detected_objects_robot:
+                            obj_wx, obj_wy = self._robot_to_world(xr, yr)
+                            dist = math.hypot(target_wx - obj_wx, target_wy - obj_wy)
+                            if dist < 1.5:  # Increased tolerance to 1.5m
+                                target_still_valid = True
+                                break
+                        
+                        if not target_still_valid:
+                            self.get_logger().debug(
+                                f"Battery-safe target ({target_wx:.2f}, {target_wy:.2f}) "
+                                "not in current detections, but publishing anyway for battery safety"
+                            )
                 else:
+                    # Missing coordinates - this shouldn't happen, but handle gracefully
+                    self.get_logger().warn(
+                        "best_candidate missing wx/wy coordinates, cannot publish recommendation"
+                    )
                     self._publish_recommended_target(None)
             else:
+                # No best candidate - this shouldn't happen in ALLOW_ONE_VISIT mode
+                self.get_logger().warn(
+                    "LOW_BATT_ALLOW_ONE_VISIT mode but best_candidate is None"
+                )
                 self._publish_recommended_target(None)
         elif self.low_batt_mode == self.LOW_BATT_NORMAL:
             # During normal operation, evaluate and recommend best target

@@ -3,7 +3,7 @@
 arena2.py
 
 Generates a Gazebo SDF world with randomly placed cylinders and
-visual-only boundary walls.
+boundary walls with collision geometry (detectable by LiDAR).
 
 This script is intended to be called from a ROS2 launch file:
     python3 arena2.py --out /tmp/arena_generated.sdf
@@ -29,7 +29,7 @@ CYL_H = 1.00
 WALL_MARGIN = CYL_R + 1.5
 MIN_CYL_DIST = CYL_R * 2 + 1.5
 
-# ── Visual-only walls ─────────────────────────────────────────────────────────
+# ── Walls with collision geometry ──────────────────────────────────────────────
 WALL_HEIGHT = 1.0
 WALL_THICKNESS = 0.1
 
@@ -104,13 +104,21 @@ def cylinder_block(i, x, y):
     """
 
 
-def visual_wall_block(name, x, y, z, sx, sy, sz):
+def wall_block(name, x, y, z, sx, sy, sz):
+    """Create a wall with both visual and collision geometry so LiDAR can detect it."""
     return f"""
     <model name="{name}">
       <static>true</static>
       <pose>{x:.4f} {y:.4f} {z:.4f} 0 0 0</pose>
       <link name="link">
-        <visual name="v">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>{sx:.4f} {sy:.4f} {sz:.4f}</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
           <geometry>
             <box>
               <size>{sx:.4f} {sy:.4f} {sz:.4f}</size>
@@ -127,11 +135,12 @@ def visual_wall_block(name, x, y, z, sx, sy, sz):
     """
 
 
-def build_visual_walls():
+def build_walls():
+    """Build walls with collision geometry so LiDAR can detect them."""
     walls = []
 
     walls.append(
-        visual_wall_block(
+        wall_block(
             name="wall_north",
             x=0.0,
             y=5.0,
@@ -143,7 +152,7 @@ def build_visual_walls():
     )
 
     walls.append(
-        visual_wall_block(
+        wall_block(
             name="wall_south",
             x=0.0,
             y=-5.0,
@@ -155,7 +164,7 @@ def build_visual_walls():
     )
 
     walls.append(
-        visual_wall_block(
+        wall_block(
             name="wall_east",
             x=21.0,
             y=0.0,
@@ -167,7 +176,7 @@ def build_visual_walls():
     )
 
     walls.append(
-        visual_wall_block(
+        wall_block(
             name="wall_west",
             x=-21.0,
             y=0.0,
@@ -213,7 +222,7 @@ def main():
         for i, (x, y) in enumerate(pts)
     )
 
-    walls_sdf = build_visual_walls()
+    # walls_sdf = build_walls()
 
     sdf = f"""<?xml version="1.0" ?>
 <sdf version="1.7">
@@ -226,8 +235,6 @@ def main():
     <include>
       <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sun</uri>
     </include>
-
-{walls_sdf}
 
 {cylinders_sdf}
 

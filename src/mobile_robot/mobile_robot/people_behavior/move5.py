@@ -1,77 +1,49 @@
 #!/usr/bin/env python3
 """
-Node 2: object_navigator.py  (ROS2)
+Node 2: object_navigator.py  (ROS2) - UPDATED FOR SUPERVISOR ARBITER
+- Subscribes to /detected_objects (std_msgs/Float32MultiArray)
+- Subscribes to /gt_odom (nav_msgs/Odometry) for robot pose
+- Publishes /cmd_vel_nav (geometry_msgs/Twist) - candidate for supervisor
 
-Behaviour:
-  SEARCHING   – rotate slowly until an unvisited object is detected
-  ROTATING    – spin in place to face nearest unvisited object
-  APPROACHING – drive toward it, stopping STOP_DISTANCE metres away
-  DWELLING    – hold position for DWELL_TIME seconds
-  (DEPART via Supervisor) – request supervisor to move robot away safely
-  Then return to SEARCHING
+Behaviour loop:
+  1. SEARCHING  – rotate slowly until an unvisited object is detected
+  2. ROTATING   – spin in place to face the nearest unvisited object
+  3. APPROACHING – drive toward it, stopping STOP_DISTANCE metres away
+  4. DWELLING   – hold position for DWELL_TIME seconds
+  5. Mark position as visited, never return → go back to step 1
 """
 
 import math
 
 import rclpy
 from rclpy.node import Node
+from rclpy.time import Time
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32MultiArray, Bool
 
 
+# ── Tunable parameters ────────────────────────────────────────────────────────
+STOP_DISTANCE = 1.0    # m    – stop this far from the object centroid
+ANGULAR_SPEED = 0.8    # rad/s – rotation speed
+LINEAR_SPEED = 0.4     # m/s  – forward travel speed
+ANGLE_TOL = 0.05       # rad  – heading error considered "aligned"
+DIST_TOL = 0.20        # m    – remaining distance considered "arrived"
+DWELL_TIME = 10.0      # s    – time to wait at the goal
+VISITED_RADIUS = 0.8   # m    – positions closer than this are "visited"
+DETECTION_TIMEOUT = 1.5  # s    – detections older than this are stale
+# ─────────────────────────────────────────────────────────────────────────────
+
+
 class ObjectNavigator(Node):
 
-    SEARCHING   = 'SEARCHING'
-    ROTATING    = 'ROTATING'
+    SEARCHING = 'SEARCHING'
+    ROTATING = 'ROTATING'
     APPROACHING = 'APPROACHING'
-    DWELLING    = 'DWELLING'
+    DWELLING = 'DWELLING'
 
     def __init__(self):
         super().__init__('object_navigator')
-
-        # ── Declare shared / tunable parameters ─────────────────────
-        self.declare_parameter('gain_multiplier', 1.0)
-
-        self.declare_parameter('base_linear_speed', 0.5)
-        self.declare_parameter('base_angular_speed', 1.2)
-
-        self.declare_parameter('stop_distance', 1.0)
-        self.declare_parameter('angle_tol', 0.05)
-        self.declare_parameter('dist_tol', 0.20)
-        self.declare_parameter('dwell_time', 5.0)
-        self.declare_parameter('visited_radius', 1.2)
-        self.declare_parameter('detection_timeout', 1.5)
-
-        # ── Read parameters ─────────────────────────────────────────
-        self.gain_multiplier = float(self.get_parameter('gain_multiplier').value)
-
-        self.base_linear_speed = float(self.get_parameter('base_linear_speed').value)
-        self.base_angular_speed = float(self.get_parameter('base_angular_speed').value)
-
-        self.stop_distance = float(self.get_parameter('stop_distance').value)
-        self.angle_tol = float(self.get_parameter('angle_tol').value)
-        self.dist_tol = float(self.get_parameter('dist_tol').value)
-        self.dwell_time = float(self.get_parameter('dwell_time').value)
-        self.visited_radius = float(self.get_parameter('visited_radius').value)
-        self.detection_timeout = float(self.get_parameter('detection_timeout').value)
-
-        # Derived speeds
-        self.linear_speed = self.base_linear_speed * self.gain_multiplier
-        self.angular_speed = self.base_angular_speed * self.gain_multiplier
-
-        self.get_logger().info(
-            f'Navigator params: gain={self.gain_multiplier:.2f}, '
-            f'linear_speed={self.linear_speed:.2f}, '
-            f'angular_speed={self.angular_speed:.2f}'
-        )
-
-        # Supervisor interlock (supervisor owns /cmd_vel when active)
-        self.supervisor_active = False
-        self.create_subscription(Bool, '/supervisor_active', self.supervisor_cb, 10)
-
-        # Request supervisor to execute a safe depart after dwelling
-        self.depart_pub = self.create_publisher(Bool, '/depart_request', 10)
 
         # Robot pose
         self.robot_x = 0.0
@@ -79,59 +51,55 @@ class ObjectNavigator(Node):
         self.robot_yaw = 0.0
         self.odom_received = False
 
-        # Detections
+        # Latest detections: list of (world_x, world_y, r, theta)
         self.detections = []
         self.last_det_time = self.get_clock().now()
 
-        # Visited world positions
-        self.visited = []
+        # Visited positions
+        self.visited: list[tuple[float, float]] = []
 
-        # Current target
-        self.target_wx = None
-        self.target_wy = None
-
-        # Supervisor recommended target
-        self.recommended_target = None
+        # Current target world position
+        self.target_wx: float | None = None
+        self.target_wy: float | None = None
 
         # State machine
         self.state = self.SEARCHING
-        self.dwell_start = None
+        self.dwell_start: Time | None = None
 
-        # Obstacle avoidance interlock
+        # Obstacle Avoidance interlock
+        # When True, avoid_while_interact.py has taken over /cmd_vel.
+        # We must not publish anything until it hands control back
         self.navigation_paused = False
 
-        # Publishers / Subscribers
+        # Low battery shutdown flag
+        self.low_battery_shutdown = False
+
+        # Supervisor interlock (supervisor owns /cmd_vel when active)
+        self.supervisor_active = False
+
+        # Publishers / subscribers
+        # Candidate topic; supervisor owns /cmd_vel
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel_nav', 10)
-        
-        self.visited_pub = self.create_publisher(
-            Float32MultiArray,
-            '/visited_columns',
-            10
-        )
-            
-        self.create_subscription(
-            Float32MultiArray, '/detected_objects',
-            self.detection_callback, 10)
+        self.visited_pub = self.create_publisher(Float32MultiArray, '/visited_columns', 10)
+        self.create_subscription(Float32MultiArray, '/detected_objects',
+                                 self.detection_callback, 10)
+        self.create_subscription(Odometry, '/odom_gt',
+                                 self.odom_callback, 10)
+        self.create_subscription(Bool, '/navigation_paused',
+                                 self.paused_callback, 10)
+        self.create_subscription(Bool, '/low_battery_warning',
+                                 self.low_battery_callback, 10)
+        self.create_subscription(Bool, '/supervisor_active',
+                                 self.supervisor_callback, 10)
 
-        self.create_subscription(
-            Odometry, '/odom_gt',
-            self.odom_callback, 10)
-
-        self.create_subscription(
-            Bool, '/navigation_paused',
-            self.paused_callback, 10)
-
-        self.create_subscription(
-            Float32MultiArray, '/recommended_target',
-            self.recommended_target_callback, 10)
-
-        # 20 Hz loop
+        # 20 Hz control loop via timer
         self.create_timer(0.05, self.control_loop)
 
         self.get_logger().info('Object navigator running.')
 
-    # ── Callbacks ───────────────────────────────────────────────────
-    def supervisor_cb(self, msg: Bool):
+    # ── Callbacks ──────────────────────────────────────────────────────────────
+    def supervisor_callback(self, msg: Bool):
+        """Receive supervisor active flag."""
         self.supervisor_active = msg.data
 
     def odom_callback(self, msg: Odometry):
@@ -144,67 +112,69 @@ class ObjectNavigator(Node):
     def detection_callback(self, msg: Float32MultiArray):
         data = msg.data
         self.detections = []
-        # Parse 4 values per object: [world_x, world_y, r_dist, theta]
-        # Validate data length is multiple of 4
-        if len(data) % 4 != 0:
-            self.get_logger().warn(
-                f"Detected objects data length ({len(data)}) is not a multiple of 4, "
-                "some objects may be skipped"
-            )
-        
         for i in range(0, len(data) - 3, 4):
-            if i + 3 >= len(data):
-                break
-            wx = float(data[i])
-            wy = float(data[i + 1])
-            r_dist = float(data[i + 2])
-            theta = float(data[i + 3])
-            
-            # Validate all values are finite
-            if all(math.isfinite(v) for v in [wx, wy, r_dist, theta]):
-                self.detections.append((wx, wy, r_dist, theta))
+            self.detections.append(
+                (float(data[i]), float(data[i + 1]),
+                 float(data[i + 2]), float(data[i + 3]))
+            )
         self.last_det_time = self.get_clock().now()
 
     def paused_callback(self, msg: Bool):
+        """Receive the interlock flag from avoid_while_interact.py."""
         was_paused = self.navigation_paused
         self.navigation_paused = msg.data
 
         if msg.data and not was_paused:
-            self.get_logger().info('Navigation paused - avoidance has control')
+            self.get_logger().info(
+                'Navigation paused - obstacle avoidance has control'
+            )
         elif not msg.data and was_paused:
-            self.get_logger().info(f'Navigation resumed - continuing from [{self.state}]')
-
-            # Re-align if we were approaching
+            # Force re-alignment after avoidance manoeuvre — the robot may have
+            # rotated significantly and the target is no longer straight ahead.
             if self.state == self.APPROACHING and self.target_wx is not None:
                 self.state = self.ROTATING
-
-    def recommended_target_callback(self, msg: Float32MultiArray):
-        """Receive supervisor's recommended target."""
-        if len(msg.data) >= 2:
-            wx = float(msg.data[0])
-            wy = float(msg.data[1])
-            
-            # Validate coordinates are finite
-            if math.isfinite(wx) and math.isfinite(wy):
-                self.recommended_target = (wx, wy)
                 self.get_logger().info(
-                    f'Supervisor recommended target: ({wx:.2f}, {wy:.2f})'
+                    'Navigation resumed - re-aligning with target before approaching.'
                 )
             else:
-                self.get_logger().warn(
-                    f'Invalid recommended target coordinates: ({wx}, {wy})'
+                self.get_logger().info(
+                    f'Navigation resumed - continuing from [{self.state}].'
                 )
-                self.recommended_target = None
-        else:
-            self.recommended_target = None
 
-    # ── Control Loop ────────────────────────────────────────────────
+    def low_battery_callback(self, msg: Bool):
+        """Yield control when battery is low for recharging."""
+        was_shutdown = self.low_battery_shutdown
+        self.low_battery_shutdown = msg.data
+
+        if msg.data and not was_shutdown:
+            self.get_logger().warn(
+                'Low battery detected - yielding control to auto_recharge node'
+            )
+        elif not msg.data and was_shutdown:
+            self.get_logger().info(
+                'Battery recharged - resuming guest interaction'
+            )
+            self.visited.clear()
+            self.get_logger().info(
+                'Cleared visited locations - starting fresh exploration'
+            )
+            self.state = self.SEARCHING
+            self.target_wx = None
+            self.target_wy = None
+            self.get_logger().info('Reset navigation state - will find nearest object from current position')
+
+    # ── Control loop (timer) ───────────────────────────────────────────────────
     def control_loop(self):
         if not self.odom_received:
             return
 
-        # If avoidance has control, do not publish /cmd_vel
+        # Yield control entirely while obstacle avoidance is active.
+        # State and target are preserved so we resume exactly where we left off.
         if self.navigation_paused:
+            return
+
+        # Stop all guest interaction when battery is low
+        if self.low_battery_shutdown:
             return
 
         # If supervisor has control, do not publish /cmd_vel
@@ -220,43 +190,20 @@ class ObjectNavigator(Node):
         elif self.state == self.DWELLING:
             self._handle_dwelling()
 
-    # ── State Handlers ──────────────────────────────────────────────
+    # ── State handlers ─────────────────────────────────────────────────────────
     def _handle_searching(self):
-        # Prefer supervisor's recommended target if available and not visited
-        target = None
-        if self.recommended_target is not None:
-            rx, ry = self.recommended_target
-            if not self._is_visited(rx, ry):
-                # Validate that recommended target is in fresh detections
-                # (within tolerance, as object might have moved slightly)
-                target_in_detections = False
-                for wx, wy, _r, _theta in self._fresh_detections():
-                    dist = math.hypot(rx - wx, ry - wy)
-                    if dist < 1.0:  # Within 1m tolerance
-                        target_in_detections = True
-                        break
-                
-                if target_in_detections:
-                    target = (rx, ry)
-                    self.get_logger().info(f'Using supervisor recommended target: ({rx:.2f}, {ry:.2f})')
-                else:
-                    self.get_logger().warn(
-                        f'Supervisor recommended target ({rx:.2f}, {ry:.2f}) '
-                        'not in fresh detections, ignoring'
-                    )
-
-        # Fall back to nearest unvisited if no supervisor recommendation
-        if target is None:
-            target = self._pick_nearest_unvisited()
-
+        target = self._pick_nearest_unvisited()
         if target is not None:
             self._stop()
             self.target_wx, self.target_wy = target
+            self.get_logger().info(
+                f'New target acquired: ({self.target_wx:.2f}, {self.target_wy:.2f})'
+            )
             self.state = self.ROTATING
-            self.get_logger().info(f'New target: ({self.target_wx:.2f}, {self.target_wy:.2f})')
         else:
+            # Rotate slowly to sweep the lidar until something is found
             twist = Twist()
-            twist.angular.z = self.angular_speed
+            twist.angular.z = ANGULAR_SPEED
             self.cmd_pub.publish(twist)
 
     def _handle_rotating(self):
@@ -270,12 +217,13 @@ class ObjectNavigator(Node):
         )
         error = self._normalise_angle(angle_to_target - self.robot_yaw)
 
-        if abs(error) < self.angle_tol:
+        if abs(error) < ANGLE_TOL:
             self._stop()
+            self.get_logger().info('Aligned with target. Approaching.')
             self.state = self.APPROACHING
         else:
             twist = Twist()
-            twist.angular.z = self.angular_speed * math.copysign(1.0, error)
+            twist.angular.z = ANGULAR_SPEED * math.copysign(1.0, error)
             self.cmd_pub.publish(twist)
 
     def _handle_approaching(self):
@@ -283,19 +231,22 @@ class ObjectNavigator(Node):
             self.state = self.SEARCHING
             return
 
-        dist = math.hypot(
+        dist_to_centroid = math.hypot(
             self.target_wx - self.robot_x,
             self.target_wy - self.robot_y
         )
-        remaining = dist - self.stop_distance
+        remaining = dist_to_centroid - STOP_DISTANCE
 
-        if remaining <= self.dist_tol:
+        if remaining <= DIST_TOL:
             self._stop()
+            self.get_logger().info(
+                f'Arrived 1 m from target. Dwelling for {DWELL_TIME:.0f} s.'
+            )
             self.dwell_start = self.get_clock().now()
             self.state = self.DWELLING
-            self.get_logger().info(f'Arrived near object. Dwelling for {self.dwell_time}s.')
             return
 
+        # Proportional heading correction while driving forward
         angle_to_target = math.atan2(
             self.target_wy - self.robot_y,
             self.target_wx - self.robot_x
@@ -303,57 +254,46 @@ class ObjectNavigator(Node):
         heading_error = self._normalise_angle(angle_to_target - self.robot_yaw)
 
         twist = Twist()
-        twist.linear.x = min(self.linear_speed, self.linear_speed * remaining)
+        # Slow down when close
+        twist.linear.x = min(LINEAR_SPEED, LINEAR_SPEED * remaining)
         twist.angular.z = 1.5 * heading_error
         self.cmd_pub.publish(twist)
 
     def _handle_dwelling(self):
         self._stop()
-
-        if self.dwell_start is None:
-            self.dwell_start = self.get_clock().now()
-            return
-
         elapsed = (self.get_clock().now() - self.dwell_start).nanoseconds * 1e-9
-        if elapsed < self.dwell_time:
-            return
 
-        # Mark visited once
-        # Mark visited once
-        if self.target_wx is not None and self.target_wy is not None:
+        if elapsed >= DWELL_TIME:
+            self.get_logger().info(
+                f'Dwell complete. Marking ({self.target_wx:.2f}, '
+                f'{self.target_wy:.2f}) as visited — will not return.'
+            )
             self.visited.append((self.target_wx, self.target_wy))
 
-            msg = Float32MultiArray()
-            msg.data = [self.target_wx, self.target_wy]
-            self.visited_pub.publish(msg)
+            visited_msg = Float32MultiArray()
+            visited_msg.data = [self.target_wx, self.target_wy]
+            self.visited_pub.publish(visited_msg)
 
-        self.get_logger().info('Dwell complete. Requesting supervisor depart.')
+            self.target_wx = None
+            self.target_wy = None
+            # Go to SEARCHING so the robot rotates and re-acquires
+            # a fresh view before selecting the next target
+            self.state = self.SEARCHING
 
-        # Request supervisor to perform a safe depart maneuver
-        req = Bool()
-        req.data = True
-        self.depart_pub.publish(req)
-
-        # Clear current target and restart search after supervisor moves us away
-        self.target_wx = None
-        self.target_wy = None
-        self.dwell_start = None
-        self.state = self.SEARCHING
-        return
-
-    # ── Helper Functions ────────────────────────────────────────────
+    # ── Helpers ────────────────────────────────────────────────────────────────
     def _fresh_detections(self):
+        """Return detections only if the last message arrived recently."""
         age = (self.get_clock().now() - self.last_det_time).nanoseconds * 1e-9
-        return self.detections if age <= self.detection_timeout else []
+        return self.detections if age <= DETECTION_TIMEOUT else []
 
     def _pick_nearest_unvisited(self):
+        """Return (world_x, world_y) of the nearest unvisited detection, or None."""
         best = None
         best_dist = float('inf')
 
         for wx, wy, _r, _theta in self._fresh_detections():
             if self._is_visited(wx, wy):
                 continue
-
             dist = math.hypot(wx - self.robot_x, wy - self.robot_y)
             if dist < best_dist:
                 best_dist = dist
@@ -361,9 +301,9 @@ class ObjectNavigator(Node):
 
         return best
 
-    def _is_visited(self, wx, wy):
+    def _is_visited(self, wx, wy) -> bool:
         return any(
-            math.hypot(wx - vx, wy - vy) < self.visited_radius
+            math.hypot(wx - vx, wy - vy) < VISITED_RADIUS
             for vx, vy in self.visited
         )
 
@@ -371,15 +311,15 @@ class ObjectNavigator(Node):
         self.cmd_pub.publish(Twist())
 
     @staticmethod
-    def _normalise_angle(angle):
+    def _normalise_angle(angle: float) -> float:
         while angle > math.pi:
-            angle -= 2 * math.pi
+            angle -= 2.0 * math.pi
         while angle < -math.pi:
-            angle += 2 * math.pi
+            angle += 2.0 * math.pi
         return angle
 
     @staticmethod
-    def _yaw_from_quaternion(qx, qy, qz, qw):
+    def _yaw_from_quaternion(qx, qy, qz, qw) -> float:
         siny_cosp = 2.0 * (qw * qz + qx * qy)
         cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
         return math.atan2(siny_cosp, cosy_cosp)
