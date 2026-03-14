@@ -12,6 +12,9 @@ Data Logger Node - Robust Recharge Trip + Charging Metrics
 import csv
 import math
 import os
+import signal
+import sys
+from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 
 import rclpy
@@ -62,7 +65,7 @@ class DataLoggerNode(Node):
 
         self.max_linear: float = float(rech_params.get("max_linear", 0.50))
         self.max_angular: float = float(rech_params.get("max_angular", 0.80))
-        self.dwell_time: float = 10.0  # keep in sync with your navigator DWELL_TIME
+        self.dwell_time: float = 5.0  # keep in sync with your navigator DWELL_TIME
 
         # Load cylinder positions (cache)
         self.cylinder_positions = self._load_cylinder_positions()
@@ -119,12 +122,20 @@ class DataLoggerNode(Node):
         # ------------------------- Output file -------------------------
         data_dir = os.path.expanduser("~/Autonomous_Robot/src/mobile_robot/data")
         os.makedirs(data_dir, exist_ok=True)
-        self.csv_file = os.path.join(data_dir, "standard_2.csv")  # tab-delimited TSV
+        # Generate unique filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.csv_file = os.path.join(data_dir, f"experiment_{timestamp}.csv")  # tab-delimited TSV
 
         self.get_logger().info(
             f"Data logger ready. Tracking {len(self.cylinder_positions)} cylinders. "
             f"Logging to: {self.csv_file}"
         )
+        
+        # Register signal handlers for graceful shutdown
+        self._shutdown_requested = False
+        self._data_saved = False
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
 
     # -------------------------------------------------------------------------
     # Data loading
@@ -148,6 +159,18 @@ class DataLoggerNode(Node):
             self.get_logger().error(f"Failed to load cylinders: {e}")
 
         return cylinders
+
+    def _signal_handler(self, signum, frame):
+        """Handle shutdown signals (SIGINT, SIGTERM) to save data before exiting."""
+        if not self._shutdown_requested:
+            self._shutdown_requested = True
+            self.get_logger().warn(f"Received signal {signum}, saving data before shutdown...")
+            try:
+                self.save_data()
+            except Exception as e:
+                self.get_logger().error(f"Error saving data on shutdown: {e}")
+            # Don't call shutdown/exit here - let the main function's finally block handle it
+            # Just set the flag so main() knows to save
 
     # -------------------------------------------------------------------------
     # Callbacks
@@ -517,6 +540,7 @@ class DataLoggerNode(Node):
                 f"{self.total_charging_time:.1f}s charging, "
                 f"{len(self.path_samples)} path samples"
             )
+            self._data_saved = True
 
         except Exception as e:
             self.get_logger().error(f"Failed to save data: {e}")
@@ -528,9 +552,19 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        print("\n[Data Logger] Saving experiment data...")
+        node.get_logger().warn("\n[Data Logger] KeyboardInterrupt received, saving experiment data...")
+        node._shutdown_requested = True
+    except Exception as e:
+        node.get_logger().error(f"[Data Logger] Exception occurred: {e}, saving data...")
+        node._shutdown_requested = True
     finally:
-        node.save_data()
+        # Always try to save data on shutdown
+        if not hasattr(node, '_data_saved') or not node._data_saved:
+            try:
+                node.save_data()
+                node._data_saved = True
+            except Exception as e:
+                node.get_logger().error(f"Failed to save data in finally block: {e}")
         node.destroy_node()
         rclpy.shutdown()
 

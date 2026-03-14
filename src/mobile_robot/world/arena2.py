@@ -206,6 +206,14 @@ def main():
         help="Optional random seed for reproducibility"
     )
 
+    parser.add_argument(
+        "--real-time-factor",
+        type=float,
+        default=1.0,
+        dest="real_time_factor",
+        help="Simulation speed multiplier (1.0 = normal, 2.0 = 2x speed, etc.)"
+    )
+
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -227,6 +235,11 @@ def main():
     sdf = f"""<?xml version="1.0" ?>
 <sdf version="1.7">
   <world name="arena2">
+
+    <physics type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>{args.real_time_factor}</real_time_factor>
+    </physics>
 
     <include>
       <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Ground%20Plane</uri>

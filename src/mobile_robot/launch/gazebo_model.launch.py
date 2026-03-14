@@ -22,6 +22,15 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    from launch.actions import DeclareLaunchArgument
+    from launch.substitutions import LaunchConfiguration
+
+    # Declare launch argument for real-time factor
+    declare_real_time_factor = DeclareLaunchArgument(
+        'real_time_factor',
+        default_value='1.0',
+        description='Simulation speed multiplier (1.0 = normal, 2.0 = 2x speed, etc.)'
+    )
 
     robotXacroName = 'differential_drive_robot'
     namePackage = 'mobile_robot'
@@ -53,12 +62,16 @@ def generate_launch_description():
     )
 
     # 1. Generate the random world first
+    real_time_factor = LaunchConfiguration('real_time_factor')
     generateWorld = ExecuteProcess(
-        cmd=['python3', pathGenScript, '--out', generatedWorldPath],
+        cmd=['python3', pathGenScript, '--out', generatedWorldPath, 
+             '--real-time-factor', real_time_factor],
         output='screen'
     )
 
     # 2. Launch Gazebo using the generated world
+    # To speed up simulation, add --real-time-factor 2.0 (or desired multiplier) to gz_args
+    # Example: 'gz_args': f'-r -v4 --real-time-factor 2.0 {generatedWorldPath}'
     gazeboLaunch = IncludeLaunchDescription(
         gazebo_rosPackageLaunch,
         launch_arguments={
@@ -189,6 +202,7 @@ def generate_launch_description():
 
     ld = LaunchDescription()
 
+    ld.add_action(declare_real_time_factor)
     ld.add_action(set_gz_resource_path)
     ld.add_action(nodeRobotStatePublisher)
     ld.add_action(generateWorld)
