@@ -82,21 +82,21 @@ class SupervisorArbiter(Node):
         # Parameters: battery decision
         # -----------------------------
         self.declare_parameter("decision_battery_threshold", 0.25)
-        self.declare_parameter("reserve_battery_fraction", 0.08)
+        self.declare_parameter("reserve_battery_fraction", 0.15)
 
-        self.declare_parameter("default_drain_per_meter", 0.015)
-        self.declare_parameter("drain_alpha", 0.15)
-        self.declare_parameter("min_motion_for_drain_update", 0.10)
+        self.declare_parameter("default_drain_per_meter", 0.02)
+        self.declare_parameter("drain_alpha", 0.10)
+        self.declare_parameter("min_motion_for_drain_update", 0.1)
 
         self.declare_parameter("visit_reward", 1.0)
-        self.declare_parameter("extra_distance_weight", 0.55)
-        self.declare_parameter("margin_weight", 2.0)
+        self.declare_parameter("extra_distance_weight", 0.70)
+        self.declare_parameter("margin_weight", 2.5)
 
         self.declare_parameter("corridor_half_angle_deg", 35.0)
-        self.declare_parameter("target_capture_radius", 0.9)
-        self.declare_parameter("lidar_clearance_margin", 0.35)
-        self.declare_parameter("scan_window_deg", 10.0)
-        self.declare_parameter("max_object_considered_m", 6.0)
+        self.declare_parameter("target_capture_radius", 1.2)
+        self.declare_parameter("lidar_clearance_margin", 0.25)
+        self.declare_parameter("scan_window_deg", 15.0)
+        self.declare_parameter("max_object_considered_m", 10.0)
 
         # flat list: [x1, y1, x2, y2, ...]
         self.declare_parameter("charging_stations", [0.0, 0.0])
@@ -180,6 +180,7 @@ class SupervisorArbiter(Node):
         self.supervisor_active_pub = self.create_publisher(Bool, "/supervisor_active", 10)
         self.decision_metrics_pub = self.create_publisher(Float32MultiArray, "/decision_metrics", 10)
         self.event_pub = self.create_publisher(String, "/supervisor_events", 10)
+        self.recommended_target_pub = self.create_publisher(Float32MultiArray, "/recommended_target", 10)
 
         # -----------------------------
         # Subscriptions (candidates)
@@ -399,13 +400,37 @@ class SupervisorArbiter(Node):
         self.scan_msg = msg
 
     def _cb_detected_objects(self, msg: Float32MultiArray):
+        """
+        Parse detected objects from identify5.py.
+        Format: [world_x, world_y, r_dist, theta, ...] (4 values per object)
+        We need robot frame coordinates, so we use r_dist and theta directly,
+        or convert world_x, world_y to robot frame if odom is available.
+        """
+        if not self.have_odom:
+            # Can't convert coordinates without odom, skip
+            return
+            
         data = list(msg.data)
         objs = []
-        for i in range(0, len(data) - 1, 2):
-            x = float(data[i])
-            y = float(data[i + 1])
-            if math.isfinite(x) and math.isfinite(y):
-                objs.append((x, y))
+        # Parse 4 values per object: [world_x, world_y, r_dist, theta]
+        for i in range(0, len(data) - 3, 4):
+            if i + 3 >= len(data):
+                break
+            world_x = float(data[i])
+            world_y = float(data[i + 1])
+            r_dist = float(data[i + 2])
+            theta = float(data[i + 3])
+            
+            # Validate all values are finite
+            if not all(math.isfinite(v) for v in [world_x, world_y, r_dist, theta]):
+                continue
+                
+            # Use r_dist and theta directly (already in robot frame)
+            # Convert polar to cartesian in robot frame
+            xr = r_dist * math.cos(theta)
+            yr = r_dist * math.sin(theta)
+            
+            objs.append((xr, yr))
         self.detected_objects_robot = objs
 
     # -----------------------------
@@ -538,6 +563,8 @@ class SupervisorArbiter(Node):
             candidates.append({
                 "xr": xr,
                 "yr": yr,
+                "wx": obj_wx,  # Store world coordinates for publishing to navigation
+                "wy": obj_wy,
                 "obj_distance": d_obj,
                 "obj_to_charger_distance": d_obj_to_charger,
                 "total_path": total_path,
@@ -564,11 +591,82 @@ class SupervisorArbiter(Node):
         )
         return True, best
 
+    def _evaluate_best_target_normal_operation(self):
+        """
+        Evaluates and returns the best target for normal operation (not low battery).
+        Returns best candidate dict or None.
+        """
+        if not (self.have_battery and self.have_odom and self.have_scan):
+            return None
+
+        if not self.detected_objects_robot:
+            return None
+
+        candidates = []
+
+        for xr, yr in self.detected_objects_robot:
+            d_obj = math.hypot(xr, yr)
+            if d_obj <= 0.05 or d_obj > self.max_object_considered_m:
+                continue
+
+            obj_bearing = math.atan2(yr, xr)
+
+            # Check if path to object is clear
+            if not self._direction_clear(obj_bearing, max(0.0, d_obj - self.target_capture_radius)):
+                continue
+
+            obj_wx, obj_wy = self._robot_to_world(xr, yr)
+
+            # Score based on distance (closer is better) and path clearance
+            # Simple scoring: prefer closer objects with clear paths
+            clearance_bonus = 1.0 if self._direction_clear(obj_bearing, d_obj) else 0.5
+            score = clearance_bonus / (d_obj + 0.1)  # Inverse distance with small offset
+
+            candidates.append({
+                "xr": xr,
+                "yr": yr,
+                "wx": obj_wx,
+                "wy": obj_wy,
+                "obj_distance": d_obj,
+                "score": score,
+            })
+
+        if not candidates:
+            return None
+
+        best = max(candidates, key=lambda c: c["score"])
+        return best
+
     def _log_mode_once(self, text: str):
         if text != self.last_logged_mode:
             self.last_logged_mode = text
             self.get_logger().info(text)
             self._publish_event(text)
+
+    def _publish_recommended_target(self, candidate):
+        """Publishes recommended target to navigation node."""
+        if candidate is None:
+            msg = Float32MultiArray()
+            msg.data = []  # Empty means no recommendation
+            self.recommended_target_pub.publish(msg)
+            return
+
+        # Validate candidate has required fields
+        if "wx" not in candidate or "wy" not in candidate:
+            self.get_logger().warn("Candidate missing wx/wy fields, skipping publish")
+            return
+            
+        wx = float(candidate["wx"])
+        wy = float(candidate["wy"])
+        
+        # Validate coordinates are finite
+        if not (math.isfinite(wx) and math.isfinite(wy)):
+            self.get_logger().warn(f"Invalid candidate coordinates: ({wx}, {wy})")
+            return
+
+        msg = Float32MultiArray()
+        msg.data = [wx, wy]
+        self.recommended_target_pub.publish(msg)
 
     def _update_low_battery_state(self):
         """
@@ -671,6 +769,49 @@ class SupervisorArbiter(Node):
         now = self.get_clock().now()
 
         self._update_low_battery_state()
+
+        # Publish recommended targets based on current mode
+        if self.depart_active or self.recharge_active:
+            # Clear recommendation during recharge or depart
+            self._publish_recommended_target(None)
+        elif self.low_batt_mode == self.LOW_BATT_ALLOW_ONE_VISIT:
+            # During ALLOW_ONE_VISIT mode, publish the battery-safe target
+            if self.best_candidate is not None:
+                # Validate that the target is still in detected objects (not stale)
+                target_wx = self.best_candidate.get("wx")
+                target_wy = self.best_candidate.get("wy")
+                if target_wx is not None and target_wy is not None:
+                    # Check if target is still reasonably close to a detected object
+                    # (object might have moved slightly, so use a tolerance)
+                    target_still_valid = False
+                    for xr, yr in self.detected_objects_robot:
+                        obj_wx, obj_wy = self._robot_to_world(xr, yr)
+                        dist = math.hypot(target_wx - obj_wx, target_wy - obj_wy)
+                        if dist < 1.0:  # Within 1m tolerance
+                            target_still_valid = True
+                            break
+                    
+                    if target_still_valid:
+                        self._publish_recommended_target(self.best_candidate)
+                    else:
+                        # Target is stale, clear it
+                        self.get_logger().warn(
+                            f"Best candidate target ({target_wx:.2f}, {target_wy:.2f}) "
+                            "no longer in detected objects, clearing recommendation"
+                        )
+                        self.best_candidate = None
+                        self._publish_recommended_target(None)
+                else:
+                    self._publish_recommended_target(None)
+            else:
+                self._publish_recommended_target(None)
+        elif self.low_batt_mode == self.LOW_BATT_NORMAL:
+            # During normal operation, evaluate and recommend best target
+            best_normal = self._evaluate_best_target_normal_operation()
+            self._publish_recommended_target(best_normal)
+        else:
+            # FORCE_RECHARGE or other modes - clear recommendation
+            self._publish_recommended_target(None)
 
         if self.depart_active:
             if self.depart_end_time is not None and now >= self.depart_end_time:

@@ -11,7 +11,8 @@ supervisor_node:
     decision_battery_threshold: 0.25
 
     # Safety battery margin reserved to reach a charger
-    reserve_battery_fraction: 0.08
+    # Increased from 0.08 to 0.15 to account for 40m arena (worst case: 40m × 0.02 drain/m = 0.8 = 80% battery needed)
+    reserve_battery_fraction: 0.15
 
     # Initial estimate of battery consumption per meter
     default_drain_per_meter: 0.02
@@ -20,7 +21,7 @@ supervisor_node:
     drain_alpha: 0.10
 
     # Minimum motion required to update drain estimate
-    min_motion_for_drain_update: 0.2
+    min_motion_for_drain_update: 0.1
 
     # Reward assigned for visiting an object
     visit_reward: 1.0
@@ -32,19 +33,20 @@ supervisor_node:
     margin_weight: 2.5
 
     # Half-angle of corridor toward charger for considering objects
-    corridor_half_angle_deg: 25.0
+    corridor_half_angle_deg: 35.0
 
     # Distance within which an object counts as visited
-    target_capture_radius: 0.9
+    target_capture_radius: 1.2
 
     # Extra safety clearance used in LiDAR obstacle checks
     lidar_clearance_margin: 0.25
 
     # LiDAR angular window used to evaluate path clearance
-    scan_window_deg: 8.0
+    # Increased from 8.0 to 15.0 for better obstacle detection (8° was too narrow)
+    scan_window_deg: 15.0
 
     # Maximum distance for considering objects as visit targets
-    max_object_considered_m: 3.0
+    max_object_considered_m: 10.0
 
     # Charging station coordinates [x1, y1, x2, y2, ...]
     charging_stations: [-20.0, 0.0, 20.0, 0.0]

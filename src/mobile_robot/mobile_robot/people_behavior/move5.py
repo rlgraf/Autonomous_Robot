@@ -34,13 +34,13 @@ class ObjectNavigator(Node):
         self.declare_parameter('gain_multiplier', 1.0)
 
         self.declare_parameter('base_linear_speed', 0.5)
-        self.declare_parameter('base_angular_speed', 0.4)
+        self.declare_parameter('base_angular_speed', 1.2)
 
         self.declare_parameter('stop_distance', 1.0)
         self.declare_parameter('angle_tol', 0.05)
         self.declare_parameter('dist_tol', 0.20)
         self.declare_parameter('dwell_time', 5.0)
-        self.declare_parameter('visited_radius', 0.8)
+        self.declare_parameter('visited_radius', 1.2)
         self.declare_parameter('detection_timeout', 1.5)
 
         # ── Read parameters ─────────────────────────────────────────
@@ -90,6 +90,9 @@ class ObjectNavigator(Node):
         self.target_wx = None
         self.target_wy = None
 
+        # Supervisor recommended target
+        self.recommended_target = None
+
         # State machine
         self.state = self.SEARCHING
         self.dwell_start = None
@@ -118,6 +121,10 @@ class ObjectNavigator(Node):
             Bool, '/navigation_paused',
             self.paused_callback, 10)
 
+        self.create_subscription(
+            Float32MultiArray, '/recommended_target',
+            self.recommended_target_callback, 10)
+
         # 20 Hz loop
         self.create_timer(0.05, self.control_loop)
 
@@ -137,13 +144,25 @@ class ObjectNavigator(Node):
     def detection_callback(self, msg: Float32MultiArray):
         data = msg.data
         self.detections = []
-        for i in range(0, len(data) - 3, 4):
-            self.detections.append(
-                (float(data[i]),
-                 float(data[i + 1]),
-                 float(data[i + 2]),
-                 float(data[i + 3]))
+        # Parse 4 values per object: [world_x, world_y, r_dist, theta]
+        # Validate data length is multiple of 4
+        if len(data) % 4 != 0:
+            self.get_logger().warn(
+                f"Detected objects data length ({len(data)}) is not a multiple of 4, "
+                "some objects may be skipped"
             )
+        
+        for i in range(0, len(data) - 3, 4):
+            if i + 3 >= len(data):
+                break
+            wx = float(data[i])
+            wy = float(data[i + 1])
+            r_dist = float(data[i + 2])
+            theta = float(data[i + 3])
+            
+            # Validate all values are finite
+            if all(math.isfinite(v) for v in [wx, wy, r_dist, theta]):
+                self.detections.append((wx, wy, r_dist, theta))
         self.last_det_time = self.get_clock().now()
 
     def paused_callback(self, msg: Bool):
@@ -158,6 +177,26 @@ class ObjectNavigator(Node):
             # Re-align if we were approaching
             if self.state == self.APPROACHING and self.target_wx is not None:
                 self.state = self.ROTATING
+
+    def recommended_target_callback(self, msg: Float32MultiArray):
+        """Receive supervisor's recommended target."""
+        if len(msg.data) >= 2:
+            wx = float(msg.data[0])
+            wy = float(msg.data[1])
+            
+            # Validate coordinates are finite
+            if math.isfinite(wx) and math.isfinite(wy):
+                self.recommended_target = (wx, wy)
+                self.get_logger().info(
+                    f'Supervisor recommended target: ({wx:.2f}, {wy:.2f})'
+                )
+            else:
+                self.get_logger().warn(
+                    f'Invalid recommended target coordinates: ({wx}, {wy})'
+                )
+                self.recommended_target = None
+        else:
+            self.recommended_target = None
 
     # ── Control Loop ────────────────────────────────────────────────
     def control_loop(self):
@@ -183,7 +222,32 @@ class ObjectNavigator(Node):
 
     # ── State Handlers ──────────────────────────────────────────────
     def _handle_searching(self):
-        target = self._pick_nearest_unvisited()
+        # Prefer supervisor's recommended target if available and not visited
+        target = None
+        if self.recommended_target is not None:
+            rx, ry = self.recommended_target
+            if not self._is_visited(rx, ry):
+                # Validate that recommended target is in fresh detections
+                # (within tolerance, as object might have moved slightly)
+                target_in_detections = False
+                for wx, wy, _r, _theta in self._fresh_detections():
+                    dist = math.hypot(rx - wx, ry - wy)
+                    if dist < 1.0:  # Within 1m tolerance
+                        target_in_detections = True
+                        break
+                
+                if target_in_detections:
+                    target = (rx, ry)
+                    self.get_logger().info(f'Using supervisor recommended target: ({rx:.2f}, {ry:.2f})')
+                else:
+                    self.get_logger().warn(
+                        f'Supervisor recommended target ({rx:.2f}, {ry:.2f}) '
+                        'not in fresh detections, ignoring'
+                    )
+
+        # Fall back to nearest unvisited if no supervisor recommendation
+        if target is None:
+            target = self._pick_nearest_unvisited()
 
         if target is not None:
             self._stop()

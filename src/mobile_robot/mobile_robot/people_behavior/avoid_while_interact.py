@@ -24,19 +24,19 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 
 # ── Tunable parameters ────────────────────────────────────────────────────────
 TRIGGER_DISTANCE = 0.60      # m
-CLEAR_DISTANCE = 0.75        # m
+CLEAR_DISTANCE = 1.0         # m  # Increased to ensure better clearance before resuming navigation
 MIN_RANGE = 0.10             # m
 MAX_RANGE = 8.0              # m
-FORWARD_ARC = 0.8            # rad
+FORWARD_ARC = 1.2            # rad  # Increased to detect obstacles at wider angles (better for cylinders)
 
 # Escape behaviour
 REVERSE_SPEED = 0.18         # m/s
 REVERSE_TURN = 0.55          # rad/s
-REVERSE_DIST = 0.35          # m
-REVERSE_TIME_MAX = 2.0       # s
+REVERSE_DIST = 0.60          # m  # Increased to better clear large obstacles like cylinders
+REVERSE_TIME_MAX = 3.0       # s  # Increased timeout to allow more reverse distance
 
 # Optional forward nudge once clear
-AVOID_LINEAR_DIST = 0.35     # m
+AVOID_LINEAR_DIST = 0.50     # m  # Increased to better clear obstacles
 AVOID_LINEAR_SPEED = 0.15    # m/s
 
 # Handoff protection

@@ -30,11 +30,11 @@ class AutoRechargeNode(Node):
         # Shared scaling / motion parameters
         self.declare_parameter('gain_multiplier', 1.0)
         self.declare_parameter('base_linear_speed', 0.5)
-        self.declare_parameter('base_angular_speed', 0.4)
+        self.declare_parameter('base_angular_speed', 1.2)
 
         # Recharge-specific parameters
         self.declare_parameter('low_battery_threshold', 0.25)
-        self.declare_parameter('arrived_radius', 0.60)
+        self.declare_parameter('arrived_radius', 0.50)
         self.declare_parameter('k_linear', 0.4)
         self.declare_parameter('k_angular', 1.6)
         self.declare_parameter('turn_only_angle', 0.25)

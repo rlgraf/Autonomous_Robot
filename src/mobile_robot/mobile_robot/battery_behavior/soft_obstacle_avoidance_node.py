@@ -36,15 +36,15 @@ class SoftObstacleAvoidanceNode(Node):
         super().__init__('soft_obstacle_avoidance_node')
 
         # ── Declare parameters (values come from avoidance_parameters.yaml) ───
-        self.declare_parameter('trigger_distance',   0.70)
+        self.declare_parameter('trigger_distance',   0.55)
         self.declare_parameter('clear_distance',     0.95)
-        self.declare_parameter('forward_arc_deg',   70.0)
-        self.declare_parameter('avoid_angular_spd',  0.45)
-        self.declare_parameter('avoid_linear_spd',   0.15)
-        self.declare_parameter('avoid_linear_dist',  0.40)
+        self.declare_parameter('forward_arc_deg',   30.0)
+        self.declare_parameter('avoid_angular_spd',  0.35)
+        self.declare_parameter('avoid_linear_spd',   0.10)
+        self.declare_parameter('avoid_linear_dist',  0.45)
         self.declare_parameter('min_range',          0.10)
         self.declare_parameter('max_range',          8.0)
-        self.declare_parameter('control_hz',        20.0)
+        self.declare_parameter('control_hz',        25.0)
 
         # NEW: anti-stuck behavior
         self.declare_parameter('max_avoid_sec',          8.0)   # hard cap for AVOIDING time

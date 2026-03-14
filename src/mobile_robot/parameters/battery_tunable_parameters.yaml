@@ -2,7 +2,7 @@
   ros__parameters:
     gain_multiplier: 1.0
     base_linear_speed: 0.5
-    base_angular_speed: 0.8
+    base_angular_speed: 1.2
     base_idle_drain_a: 1.0
     base_move_drain_per_ms: 8.0
     base_turn_drain_per_rads: 3.0
@@ -36,7 +36,8 @@ move5:
     angle_tol: 0.05
     dist_tol: 0.20
     dwell_time: 5.0
-    visited_radius: 0.8
+    # Increased from 0.8 to 1.2 to ensure objects are marked as visited when stopped at 1.0m
+    visited_radius: 1.2
     detection_timeout: 1.5
 
 auto_recharge_node:

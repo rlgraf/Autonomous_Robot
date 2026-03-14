@@ -27,3 +27,9 @@ soft_obstacle_avoidance_node:
     max_range:          8.0    # m
     control_hz:         25.0   # Hz
     
+    # Anti-stuck behavior parameters
+    max_avoid_sec:          8.0   # hard cap for AVOIDING time
+    no_progress_sec:        2.5   # if range doesn't improve for this long -> release
+    progress_epsilon_m:     0.05  # improvement threshold (meters)
+    release_cooldown_sec:   1.0   # ignore triggers briefly after releasing
+    
