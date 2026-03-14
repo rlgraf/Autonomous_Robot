@@ -27,10 +27,12 @@ supervisor_node:
     visit_reward: 1.0
 
     # Penalty weight for detour distance before charging
-    extra_distance_weight: 0.70
+    # Reduced from 0.70 to 0.50 to allow slightly larger detours
+    extra_distance_weight: 0.50
 
     # Weight applied to battery safety margin in decision cost
-    margin_weight: 2.5
+    # Increased from 2.5 to 3.0 to reward safety margin more
+    margin_weight: 3.0
 
     # Half-angle of corridor toward charger for considering objects
     corridor_half_angle_deg: 35.0
