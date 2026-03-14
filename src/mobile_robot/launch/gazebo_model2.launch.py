@@ -24,6 +24,12 @@ def generate_launch_description():
         'decider_parameters.yaml'
     )
 
+    avoidance_params = os.path.join(
+        pkg_share,
+        'parameters',
+        'avoidance_parameters.yaml'
+    )
+
     # Bridge existing Gazebo odometry from the already-running arena
     bridge_odom = Node(
         package='ros_gz_bridge',
@@ -72,7 +78,7 @@ def generate_launch_description():
         executable='soft_obstacle_avoidance_node',
         name='soft_obstacle_avoidance_node',
         output='screen',
-        parameters=[shared_params_file, {'use_sim_time': True}],
+        parameters=[avoidance_params, {'use_sim_time': True}],
         remappings=[
             ('/cmd_vel', '/cmd_vel_soft_avoid'),
         ],
