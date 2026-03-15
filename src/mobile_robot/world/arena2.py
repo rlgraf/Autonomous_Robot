@@ -21,7 +21,16 @@ HALF_X = 20.0   # total length = 40 m
 HALF_Y = 5.0    # total width  = 10 m
 
 # ── Cylinders ─────────────────────────────────────────────────────────────────
-# If CYLINDER_COORDINATES is provided, these exact coordinates will be used.
+# Option 1: Reference a coordinate file directly (easiest for experiments)
+# Set this to the path of your coordinate file, or None to use other options
+# Path is relative to workspace root (Autonomous_Robot/)
+COORDINATE_FILE_REFERENCE = None
+# Examples:
+# COORDINATE_FILE_REFERENCE = "src/mobile_robot/data/coordinates_15cyl_run1.txt"
+# COORDINATE_FILE_REFERENCE = "src/mobile_robot/data/coordinates_30cyl_run2.txt"
+# COORDINATE_FILE_REFERENCE = "src/mobile_robot/data/coordinates_45cyl_run3.txt"
+
+# Option 2: If CYLINDER_COORDINATES is provided, these exact coordinates will be used.
 # Otherwise, N cylinders will be randomly generated.
 CYLINDER_COORDINATES = [
     # Add your cylinder coordinates here as (x, y) tuples
@@ -242,10 +251,33 @@ def main():
 
     args = parser.parse_args()
 
-    # Determine cylinder positions (priority: file > command line > CYLINDER_COORDINATES > random)
+    # Determine cylinder positions (priority: COORDINATE_FILE_REFERENCE > file > command line > CYLINDER_COORDINATES > random)
     pts = []
     
-    if args.coordinates_file and args.coordinates_file.strip():
+    # First check if a coordinate file is referenced directly in the code
+    if COORDINATE_FILE_REFERENCE:
+        coord_file = Path(COORDINATE_FILE_REFERENCE)
+        # Try relative to script directory first, then absolute path
+        if not coord_file.is_absolute():
+            script_dir = Path(__file__).parent.parent.parent.parent  # Go up to workspace root
+            coord_file = script_dir / coord_file
+        if not coord_file.exists():
+            raise FileNotFoundError(f"Coordinate file reference not found: {coord_file}")
+        
+        with open(coord_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                try:
+                    x, y = line.split(',')
+                    pts.append((float(x.strip()), float(y.strip())))
+                except ValueError:
+                    print(f"Warning: Skipping invalid line: {line}")
+        
+        print(f"\nLoaded {len(pts)} cylinder coordinates from reference: {coord_file}")
+    
+    elif args.coordinates_file and args.coordinates_file.strip():
         # Load from file (highest priority)
         coord_file = Path(args.coordinates_file.strip())
         if not coord_file.exists():

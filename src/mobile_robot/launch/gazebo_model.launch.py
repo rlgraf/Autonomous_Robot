@@ -49,6 +49,13 @@ def generate_launch_description():
         description='Robot spawn Z coordinate (meters)'
     )
 
+    # Declare launch argument for coordinates file
+    declare_coordinates_file = DeclareLaunchArgument(
+        'coordinates_file',
+        default_value='',
+        description='Path to file with cylinder coordinates (one per line: x,y)'
+    )
+
 
     robotXacroName = 'differential_drive_robot'
     namePackage = 'mobile_robot'
@@ -61,6 +68,7 @@ def generate_launch_description():
     # This must match where arena2.py is installed in your package share.
     # Change 'worlds' to 'world' if that is your actual installed folder name.
     pathGenScript = os.path.join(pkg_share, 'world', 'arena2.py')
+    pathGenWrapper = os.path.join(pkg_share, 'world', 'generate_world_wrapper.py')
 
     generatedWorldPath = '/tmp/arena_generated.sdf'
 
@@ -81,9 +89,22 @@ def generate_launch_description():
 
     # 1. Generate the random world first
     real_time_factor = LaunchConfiguration('real_time_factor')
+    coordinates_file = LaunchConfiguration('coordinates_file')
+    
+    # Build command for world generation
+    world_gen_cmd = ['python3', pathGenScript, '--out', generatedWorldPath, 
+                     '--real-time-factor', real_time_factor]
+    
+    # Add coordinates file if provided
+    from launch.conditions import IfCondition
+    from launch.substitutions import PythonExpression
+    
+    # Use wrapper script to handle optional coordinates_file argument
+    # The wrapper will skip --coordinates-file if the value is empty
     generateWorld = ExecuteProcess(
-        cmd=['python3', pathGenScript, '--out', generatedWorldPath, 
-             '--real-time-factor', real_time_factor],
+        cmd=['python3', pathGenWrapper, '--out', generatedWorldPath, 
+             '--real-time-factor', real_time_factor,
+             '--coordinates-file', coordinates_file],
         output='screen'
     )
 
@@ -227,6 +248,7 @@ def generate_launch_description():
     ld.add_action(declare_robot_x)
     ld.add_action(declare_robot_y)
     ld.add_action(declare_robot_z)
+    ld.add_action(declare_coordinates_file)
     ld.add_action(set_gz_resource_path)
     ld.add_action(nodeRobotStatePublisher)
     ld.add_action(generateWorld)
