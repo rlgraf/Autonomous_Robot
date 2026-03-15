@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import math
 from collections import deque
+from typing import List, Tuple
 
 import rclpy
 from rclpy.node import Node
@@ -140,6 +141,8 @@ class SupervisorArbiter(Node):
         self.allowed_visit_consumed = False
         self.pending_force_recharge_after_depart = False
         self.best_candidate = None
+        self.visit_count_near_station = 0  # Track visits when near station
+        self.max_visits_near_station = 3  # Allow up to 3 visits when very close to station
 
         self.last_logged_mode = ""
 
@@ -166,12 +169,21 @@ class SupervisorArbiter(Node):
 
         # detected objects in robot frame: [(xr, yr), ...]
         self.detected_objects_robot = []
+        
+        # Track visited objects (world coordinates) to avoid recommending them
+        self.visited_objects_world: List[Tuple[float, float]] = []
+        self.visited_radius = 1.2  # Same as target_capture_radius - objects within this distance are considered visited
 
         # online drain estimate
         self.drain_per_meter = self.default_drain_per_meter
         self.prev_batt_for_update = None
         self.prev_pos_for_update = None
         self.energy_history = deque(maxlen=50)
+        
+        # Track movement direction for sequential visit preference
+        self.movement_direction = None  # (dx, dy) normalized direction vector
+        self.prev_pos_for_direction = None
+        self.direction_history = deque(maxlen=10)  # Recent movement directions
 
         # -----------------------------
         # Publishers
@@ -198,6 +210,9 @@ class SupervisorArbiter(Node):
         self.create_subscription(Bool, "/navigation_paused", self._cb_navigation_paused, 10)
         self.create_subscription(Bool, "/avoid_active", self._cb_avoid_active, 10)
         self.create_subscription(Bool, "/depart_request", self._cb_depart_request, 10)
+        
+        # Subscribe to visited cylinders to track which objects have been visited
+        self.create_subscription(Float32MultiArray, "/visited_columns", self._cb_visited_columns, 10)
 
         # -----------------------------
         # Subscriptions (decision inputs)
@@ -334,12 +349,37 @@ class SupervisorArbiter(Node):
         self._publish_event("DEPART_REQUEST_RECEIVED")
 
         if self.low_batt_mode == self.LOW_BATT_ALLOW_ONE_VISIT and not self.allowed_visit_consumed:
-            self.allowed_visit_consumed = True
-            self.pending_force_recharge_after_depart = True
-            self.get_logger().info(
-                "Allowed low-battery visit completed. Will force recharge after depart."
-            )
-            self._publish_event("ALLOWED_VISIT_CONSUMED")
+            # Check if we're near a station - if so, allow multiple visits
+            station, dist_to_charger = self._nearest_station()
+            near_station = (station is not None and dist_to_charger < 10.0)
+            
+            if near_station:
+                self.visit_count_near_station += 1
+                self.get_logger().info(
+                    f"Visit {self.visit_count_near_station}/{self.max_visits_near_station} near station "
+                    f"(dist={dist_to_charger:.2f}m) completed. "
+                    f"{'Allowing more visits.' if self.visit_count_near_station < self.max_visits_near_station else 'Max visits reached, will force recharge.'}"
+                )
+                
+                if self.visit_count_near_station >= self.max_visits_near_station:
+                    # Max visits reached, force recharge
+                    self.allowed_visit_consumed = True
+                    self.pending_force_recharge_after_depart = True
+                    self.visit_count_near_station = 0  # Reset counter
+                    self._publish_event("ALLOWED_VISIT_CONSUMED_MAX_REACHED")
+                else:
+                    # Reset to allow re-evaluation for another visit
+                    self.low_batt_decision_made = False
+                    self.best_candidate = None
+                    self._publish_event(f"ALLOWED_VISIT_NEAR_STATION_{self.visit_count_near_station}")
+            else:
+                # Not near station - only one visit allowed
+                self.allowed_visit_consumed = True
+                self.pending_force_recharge_after_depart = True
+                self.get_logger().info(
+                    "Allowed low-battery visit completed. Will force recharge after depart."
+                )
+                self._publish_event("ALLOWED_VISIT_CONSUMED")
 
         if not self.depart_active:
             self.depart_active = True
@@ -381,6 +421,25 @@ class SupervisorArbiter(Node):
         dx = curr_pos[0] - self.prev_pos_for_update[0]
         dy = curr_pos[1] - self.prev_pos_for_update[1]
         dist = math.hypot(dx, dy)
+        
+        # Update movement direction for sequential visit preference
+        if dist > 0.1:  # Only update if moved significantly
+            if self.prev_pos_for_direction is not None:
+                dir_dx = curr_pos[0] - self.prev_pos_for_direction[0]
+                dir_dy = curr_pos[1] - self.prev_pos_for_direction[1]
+                dir_dist = math.hypot(dir_dx, dir_dy)
+                if dir_dist > 0.1:
+                    # Normalize direction vector
+                    self.movement_direction = (dir_dx / dir_dist, dir_dy / dir_dist)
+                    self.direction_history.append(self.movement_direction)
+                    # Average recent directions for smoother direction estimate
+                    if len(self.direction_history) > 1:
+                        avg_dx = sum(d[0] for d in self.direction_history) / len(self.direction_history)
+                        avg_dy = sum(d[1] for d in self.direction_history) / len(self.direction_history)
+                        avg_norm = math.hypot(avg_dx, avg_dy)
+                        if avg_norm > 0.01:
+                            self.movement_direction = (avg_dx / avg_norm, avg_dy / avg_norm)
+            self.prev_pos_for_direction = curr_pos
 
         if dist >= self.min_motion_for_drain_update:
             dbatt = self.prev_batt_for_update - curr_batt
@@ -432,6 +491,35 @@ class SupervisorArbiter(Node):
             
             objs.append((xr, yr))
         self.detected_objects_robot = objs
+
+    def _cb_visited_columns(self, msg: Float32MultiArray):
+        """Track visited cylinder positions to avoid recommending them."""
+        if len(msg.data) < 2:
+            return
+        
+        try:
+            wx = float(msg.data[0])
+            wy = float(msg.data[1])
+            
+            # Check if this position is already in visited list (within visited_radius)
+            is_duplicate = False
+            for vx, vy in self.visited_objects_world:
+                if math.hypot(wx - vx, wy - vy) < self.visited_radius:
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
+                self.visited_objects_world.append((wx, wy))
+                self.get_logger().debug(f"Tracked visited object at ({wx:.2f}, {wy:.2f})")
+        except (ValueError, IndexError) as e:
+            self.get_logger().warn(f"Error parsing visited_columns message: {e}")
+
+    def _is_object_visited(self, obj_wx: float, obj_wy: float) -> bool:
+        """Check if an object at world coordinates has been visited."""
+        for vx, vy in self.visited_objects_world:
+            if math.hypot(obj_wx - vx, obj_wy - vy) < self.visited_radius:
+                return True
+        return False
 
     # -----------------------------
     # Helpers
@@ -514,7 +602,10 @@ class SupervisorArbiter(Node):
         sx, sy = station
         charger_bearing = self._world_to_robot_bearing(sx, sy)
 
-        if not self._direction_clear(charger_bearing, min(dist_to_charger, 2.0)):
+        # When very close to station (< 10m), be more lenient with path clearance check
+        # Use larger clearance distance to account for being near the station
+        clearance_dist = min(dist_to_charger, 2.0) if dist_to_charger > 10.0 else max(dist_to_charger, 1.0)
+        if not self._direction_clear(charger_bearing, clearance_dist):
             self._publish_event("EVAL_REJECT_CHARGER_PATH_BLOCKED")
             return False, None
 
@@ -537,13 +628,27 @@ class SupervisorArbiter(Node):
 
             obj_bearing = math.atan2(yr, xr)
 
-            if abs(wrap_to_pi(obj_bearing - charger_bearing)) > self.corridor_half_angle:
+            # When close to station (< 10m), widen the corridor angle to allow more flexibility
+            # This allows visits to objects that are slightly off the direct path when near station
+            effective_corridor_angle = self.corridor_half_angle
+            if dist_to_charger < 10.0:
+                # Widen corridor by up to 20 degrees when very close (scales with distance)
+                distance_factor = (10.0 - dist_to_charger) / 10.0  # 0.0 at 10m, 1.0 at 0m
+                angle_bonus = math.radians(20.0) * distance_factor
+                effective_corridor_angle = self.corridor_half_angle + angle_bonus
+
+            if abs(wrap_to_pi(obj_bearing - charger_bearing)) > effective_corridor_angle:
                 continue
 
             if not self._direction_clear(obj_bearing, max(0.0, d_obj - self.target_capture_radius)):
                 continue
 
             obj_wx, obj_wy = self._robot_to_world(xr, yr)
+            
+            # Skip if this object has already been visited
+            if self._is_object_visited(obj_wx, obj_wy):
+                continue
+            
             d_obj_to_charger = math.hypot(sx - obj_wx, sy - obj_wy)
 
             total_path = d_obj + d_obj_to_charger
@@ -554,10 +659,33 @@ class SupervisorArbiter(Node):
             if margin < 0.0:
                 continue
 
+            # When close to station, reduce penalty for extra distance since return trip is short
+            # This encourages visits when near the station
+            effective_extra_dist_weight = self.extra_distance_weight
+            if dist_to_charger < 10.0:
+                # Reduce penalty by up to 50% when very close to station
+                distance_factor = (10.0 - dist_to_charger) / 10.0  # 0.0 at 10m, 1.0 at 0m
+                effective_extra_dist_weight = self.extra_distance_weight * (1.0 - 0.5 * distance_factor)
+
+            # Bonus for objects in the direction of travel (sequential visit preference)
+            direction_bonus = 0.0
+            if self.movement_direction is not None:
+                # Calculate direction from robot to object
+                obj_dir_x = xr / d_obj if d_obj > 0.01 else 0.0
+                obj_dir_y = yr / d_obj if d_obj > 0.01 else 0.0
+                # Dot product: positive if object is in forward direction
+                dot_product = (obj_dir_x * self.movement_direction[0] + 
+                              obj_dir_y * self.movement_direction[1])
+                # Bonus up to 0.3 for objects directly ahead (dot_product = 1.0)
+                # No bonus for objects behind (dot_product < 0)
+                if dot_product > 0:
+                    direction_bonus = 0.3 * dot_product
+            
             score = (
                 self.visit_reward
-                - self.extra_distance_weight * extra_dist
+                - effective_extra_dist_weight * extra_dist
                 + self.margin_weight * margin
+                + direction_bonus  # Prefer objects in direction of travel
             )
 
             candidates.append({
@@ -616,11 +744,26 @@ class SupervisorArbiter(Node):
                 continue
 
             obj_wx, obj_wy = self._robot_to_world(xr, yr)
+            
+            # Skip if this object has already been visited
+            if self._is_object_visited(obj_wx, obj_wy):
+                continue
 
-            # Score based on distance (closer is better) and path clearance
-            # Simple scoring: prefer closer objects with clear paths
+            # Score based on distance (closer is better), path clearance, and direction
             clearance_bonus = 1.0 if self._direction_clear(obj_bearing, d_obj) else 0.5
-            score = clearance_bonus / (d_obj + 0.1)  # Inverse distance with small offset
+            base_score = clearance_bonus / (d_obj + 0.1)  # Inverse distance with small offset
+            
+            # Bonus for objects in the direction of travel (sequential visit preference)
+            direction_bonus = 0.0
+            if self.movement_direction is not None:
+                obj_dir_x = xr / d_obj if d_obj > 0.01 else 0.0
+                obj_dir_y = yr / d_obj if d_obj > 0.01 else 0.0
+                dot_product = (obj_dir_x * self.movement_direction[0] + 
+                              obj_dir_y * self.movement_direction[1])
+                if dot_product > 0:
+                    direction_bonus = 0.5 * dot_product  # Larger bonus for normal operation
+            
+            score = base_score + direction_bonus
 
             candidates.append({
                 "xr": xr,
@@ -685,6 +828,7 @@ class SupervisorArbiter(Node):
                 self.allowed_visit_consumed = False
                 self.pending_force_recharge_after_depart = False
                 self.best_candidate = None
+                self.visit_count_near_station = 0  # Reset visit counter after recharge
 
                 self._publish_decision_metrics(None, self.MODE_CODE_NORMAL)
                 self._log_mode_once(
@@ -705,6 +849,7 @@ class SupervisorArbiter(Node):
             return
 
         if self.low_batt_mode == self.LOW_BATT_ALLOW_ONE_VISIT:
+            # If we have a candidate, use it
             if self.best_candidate is not None:
                 self._publish_decision_metrics(self.best_candidate, self.MODE_CODE_ALLOW_ONE_VISIT)
                 self._log_mode_once(
@@ -713,6 +858,49 @@ class SupervisorArbiter(Node):
                     f"obj_d={self.best_candidate['obj_distance']:.2f}m "
                     f"extra_d={self.best_candidate['extra_distance']:.2f}m "
                     f"margin={self.best_candidate['margin']:.3f}"
+                )
+                return
+            
+            # If no candidate but we're near station and haven't consumed all visits, re-evaluate
+            if not self.allowed_visit_consumed:
+                station, dist_to_charger = self._nearest_station()
+                near_station = (station is not None and dist_to_charger < 10.0)
+                
+                if near_station and self.visit_count_near_station < self.max_visits_near_station:
+                    # Re-evaluate for another visit
+                    self.get_logger().info(
+                        f"Re-evaluating for visit {self.visit_count_near_station + 1} near station "
+                        f"(dist={dist_to_charger:.2f}m)"
+                    )
+                    allow_visit, best = self._evaluate_visit_before_recharge()
+                    
+                    if allow_visit and best is not None:
+                        self.best_candidate = best
+                        self._publish_decision_metrics(best, self.MODE_CODE_ALLOW_ONE_VISIT)
+                        self._log_mode_once(
+                            f"LOW_BATTERY_ALLOW_ONE_VISIT (re-evaluated) "
+                            f"score={best['score']:.3f} "
+                            f"obj_d={best['obj_distance']:.2f}m "
+                            f"extra_d={best['extra_distance']:.2f}m "
+                            f"margin={best['margin']:.3f}"
+                        )
+                        return
+                    else:
+                        # No feasible visit found, force recharge
+                        self.get_logger().info(
+                            f"No feasible visit found near station. Forcing recharge."
+                        )
+                        self.allowed_visit_consumed = True
+                        self.pending_force_recharge_after_depart = True
+                        self.visit_count_near_station = 0
+                        self.low_batt_mode = self.LOW_BATT_FORCE_RECHARGE
+                        self._publish_decision_metrics(None, self.MODE_CODE_FORCE_RECHARGE)
+                        return
+            
+            # No candidate and can't re-evaluate - should force recharge
+            if self.best_candidate is None:
+                self.get_logger().warn(
+                    "LOW_BATT_ALLOW_ONE_VISIT mode but best_candidate is None and can't re-evaluate"
                 )
             return
 

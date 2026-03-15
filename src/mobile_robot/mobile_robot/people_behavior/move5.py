@@ -287,16 +287,39 @@ class ObjectNavigator(Node):
         return self.detections if age <= DETECTION_TIMEOUT else []
 
     def _pick_nearest_unvisited(self):
-        """Return (world_x, world_y) of the nearest unvisited detection, or None."""
+        """Return (world_x, world_y) of the best unvisited detection, or None.
+        Prefers objects in the direction of travel for sequential visits."""
         best = None
-        best_dist = float('inf')
+        best_score = float('-inf')
+        
+        # Use robot's current heading as proxy for movement direction
+        movement_dir = (math.cos(self.robot_yaw), math.sin(self.robot_yaw))
 
         for wx, wy, _r, _theta in self._fresh_detections():
             if self._is_visited(wx, wy):
                 continue
+            
             dist = math.hypot(wx - self.robot_x, wy - self.robot_y)
-            if dist < best_dist:
-                best_dist = dist
+            
+            # Score: inverse distance (closer is better) + direction bonus
+            # Calculate direction from robot to object
+            dx = wx - self.robot_x
+            dy = wy - self.robot_y
+            if dist > 0.01:
+                obj_dir = (dx / dist, dy / dist)
+                # Dot product: positive if object is in forward direction
+                dot_product = obj_dir[0] * movement_dir[0] + obj_dir[1] * movement_dir[1]
+                
+                # Score: prefer closer objects, with bonus for forward direction
+                # Inverse distance (closer = higher score) + direction bonus
+                score = (1.0 / max(dist, 0.1))  # Inverse distance
+                if dot_product > 0:
+                    score += 0.5 * dot_product  # Bonus for forward direction
+            else:
+                score = 0.0
+            
+            if score > best_score:
+                best_score = score
                 best = (wx, wy)
 
         return best
