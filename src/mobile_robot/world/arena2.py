@@ -327,13 +327,31 @@ def main():
 
     # Write cylinder positions to cache file for data logger
     import os
-    cache_dir = os.path.expanduser("~/Autonomous_Robot/src/mobile_robot/data")
+    cache_dir = os.path.expanduser("~/Autonomous_Robot/data")
     os.makedirs(cache_dir, exist_ok=True)
     cache_file = os.path.join(cache_dir, "cylinder_positions.txt")
+    
+    # Extract run name from coordinate file if available
+    run_name = None
+    if COORDINATE_FILE_REFERENCE:
+        # Extract name from path like "coordinates_15cyl_run1.txt" -> "15cyl_run1"
+        coord_file_name = Path(COORDINATE_FILE_REFERENCE).stem
+        if coord_file_name.startswith("coordinates_"):
+            run_name = coord_file_name.replace("coordinates_", "")
+    elif args.coordinates_file and args.coordinates_file.strip():
+        coord_file_name = Path(args.coordinates_file.strip()).stem
+        if coord_file_name.startswith("coordinates_"):
+            run_name = coord_file_name.replace("coordinates_", "")
+    
     with open(cache_file, "w") as f:
+        # Write run name as first line if available
+        if run_name:
+            f.write(f"#RUN_NAME:{run_name}\n")
         for x, y in pts:
             f.write(f"{x},{y}\n")
     print(f"\nCylinder positions written to: {cache_file}")
+    if run_name:
+        print(f"Run name: {run_name}")
 
     cylinders_sdf = "\n".join(
         cylinder_block(i, x, y)

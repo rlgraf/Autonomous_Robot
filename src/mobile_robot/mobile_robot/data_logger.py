@@ -67,13 +67,17 @@ class DataLoggerNode(Node):
         self.max_angular: float = float(rech_params.get("max_angular", 0.80))
         self.dwell_time: float = 5.0  # keep in sync with your navigator DWELL_TIME
 
-        # Load cylinder positions (cache)
+        # Initialize run name (will be set when loading cylinder positions)
+        self.run_name: Optional[str] = None
+
+        # Load cylinder positions (cache) - this also sets self.run_name
         self.cylinder_positions = self._load_cylinder_positions()
 
         # ------------------------- Runtime data -------------------------
-        self.visited_cylinders: List[Tuple[float, float, Time]] = []  # (x,y,arrival_time)
+        self.visited_cylinders: List[Tuple[float, float, Time, float]] = []  # (x,y,arrival_time,battery_pct)
         self.last_visit_time: Optional[Time] = None
         self.total_travel_time: float = 0.0
+        self.low_battery_threshold: float = 0.25  # 25% threshold
 
         # Recharge trips
         self.recharge_trips: List[Dict[str, Any]] = []
@@ -129,6 +133,7 @@ class DataLoggerNode(Node):
         # ------------------------- ROS I/O -------------------------
         # Note: move5.py publishes to /visited_columns (not /visited_cylinders)
         self.create_subscription(Float32MultiArray, "/visited_columns", self._visited_callback, 10)
+        self.get_logger().info("Subscribed to /visited_columns for cylinder visit tracking")
         self.create_subscription(Bool, "/recharge_active", self._recharge_callback, 10)
         self.create_subscription(BatteryState, "battery_status", self._battery_callback, 10)
 
@@ -140,29 +145,38 @@ class DataLoggerNode(Node):
         self.create_timer(1.0, self._path_sample_timer_callback)
 
         # ------------------------- Output file -------------------------
-        data_dir = os.path.expanduser("~/Autonomous_Robot/src/mobile_robot/data")
+        data_dir = os.path.expanduser("~/Autonomous_Robot/data")
         os.makedirs(data_dir, exist_ok=True)
         
         # Find the next run number by checking existing files
+        # If we have a run name, include it in the filename for easier identification
         run_number = 1
         while True:
-            run_file = os.path.join(data_dir, f"run{run_number}.csv")
+            if self.run_name:
+                # Include run name in filename: e.g., "15cyl_run1_run1.csv"
+                run_file = os.path.join(data_dir, f"{self.run_name}_run{run_number}.csv")
+            else:
+                run_file = os.path.join(data_dir, f"run{run_number}.csv")
             if not os.path.exists(run_file):
                 break
             run_number += 1
         
-        self.csv_file = os.path.join(data_dir, f"run{run_number}.csv")  # tab-delimited TSV
+        if self.run_name:
+            self.csv_file = os.path.join(data_dir, f"{self.run_name}_run{run_number}.csv")
+        else:
+            self.csv_file = os.path.join(data_dir, f"run{run_number}.csv")  # tab-delimited TSV
         self.run_number = run_number
 
         num_columns = len(self.cylinder_positions)
+        run_display_name = self.run_name if self.run_name else f"Run {run_number}"
         print(f"\n{'='*60}")
-        print(f"Data Logger: Run {run_number}")
+        print(f"Data Logger: {run_display_name}")
         print(f"Number of columns tested: {num_columns}")
         print(f"Output file: {self.csv_file}")
         print(f"{'='*60}\n")
         
         self.get_logger().info(
-            f"Data logger ready. Run {run_number}. Tracking {num_columns} cylinders. "
+            f"Data logger ready. {run_display_name}. Tracking {num_columns} cylinders. "
             f"Logging to: {self.csv_file}"
         )
         
@@ -176,7 +190,7 @@ class DataLoggerNode(Node):
     # Data loading
     # -------------------------------------------------------------------------
     def _load_cylinder_positions(self) -> List[Tuple[float, float]]:
-        data_dir = os.path.expanduser("~/Autonomous_Robot/src/mobile_robot/data")
+        data_dir = os.path.expanduser("~/Autonomous_Robot/data")
         cache_file = os.path.join(data_dir, "cylinder_positions.txt")
         cylinders: List[Tuple[float, float]] = []
 
@@ -187,9 +201,19 @@ class DataLoggerNode(Node):
         try:
             with open(cache_file, "r") as f:
                 for line in f:
-                    x, y = line.strip().split(",")
-                    cylinders.append((float(x), float(y)))
+                    line = line.strip()
+                    # Check for run name metadata
+                    if line.startswith("#RUN_NAME:"):
+                        self.run_name = line.replace("#RUN_NAME:", "").strip()
+                        continue
+                    # Skip empty lines and comments
+                    if not line or line.startswith("#"):
+                        continue
+                    x, y = line.split(",")
+                    cylinders.append((float(x.strip()), float(y.strip())))
             self.get_logger().info(f"Loaded {len(cylinders)} cylinders from cache")
+            if self.run_name:
+                self.get_logger().info(f"Detected run name: {self.run_name}")
         except Exception as e:
             self.get_logger().error(f"Failed to load cylinders: {e}")
 
@@ -237,6 +261,8 @@ class DataLoggerNode(Node):
 
     def _visited_callback(self, msg: Float32MultiArray):
         """Record when robot completes dwelling at a cylinder."""
+        self.get_logger().debug(f"_visited_callback called with {len(msg.data)} data elements")
+        
         if len(msg.data) < 2:
             self.get_logger().warn(f"Received visited_columns message with insufficient data: {len(msg.data)} elements (need at least 2)")
             return
@@ -250,13 +276,18 @@ class DataLoggerNode(Node):
                 dt -= self.dwell_time
                 self.total_travel_time += max(0.0, dt)
 
-            self.visited_cylinders.append((x, y, now))
+            # Record battery level at visit time
+            battery_pct = self.current_battery_pct
+            self.visited_cylinders.append((x, y, now, battery_pct))
             self.last_visit_time = now
 
+            low_battery_flag = " [LOW BATTERY <25%]" if battery_pct < self.low_battery_threshold else ""
             self.get_logger().info(
-                f"Cylinder visited at ({x:.2f}, {y:+.2f}) - "
+                f"[DATA LOGGER] Cylinder visited at ({x:.2f}, {y:+.2f}) - "
+                f"Battery: {battery_pct*100:.1f}%{low_battery_flag} - "
                 f"Total: {len(self.visited_cylinders)}/{len(self.cylinder_positions)}"
             )
+            print(f"[DATA LOGGER] Cylinder visited at ({x:.2f}, {y:+.2f}) - Battery: {battery_pct*100:.1f}% - Total: {len(self.visited_cylinders)}/{len(self.cylinder_positions)}")
         except (ValueError, IndexError) as e:
             self.get_logger().error(f"Error parsing visited_columns message: {e}, data: {msg.data}")
 
@@ -474,6 +505,8 @@ class DataLoggerNode(Node):
                 writer = csv.writer(f, delimiter="\t")
 
                 writer.writerow(["EXPERIMENT SUMMARY"])
+                if self.run_name:
+                    writer.writerow(["Run Name", self.run_name])
                 writer.writerow(["Max Linear Speed (m/s)", f"{self.max_linear:.3f}"])
                 writer.writerow(["Max Angular Speed (rad/s)", f"{self.max_angular:.3f}"])
                 writer.writerow(["Real-Time Factor", f"{self.real_time_factor:.3f}"])
@@ -481,6 +514,10 @@ class DataLoggerNode(Node):
                 writer.writerow(["Total Cylinders", len(self.cylinder_positions)])
                 writer.writerow(["Cylinders Visited", len(self.visited_cylinders)])
                 writer.writerow(["Cylinders Visited Ratio", f"{len(self.visited_cylinders)}/{len(self.cylinder_positions)}"])
+                
+                # Count cylinders visited below 25% battery
+                low_battery_visits = [v for v in self.visited_cylinders if v[3] < self.low_battery_threshold]
+                writer.writerow(["Cylinders Visited Below 25% Battery", len(low_battery_visits)])
                 writer.writerow([])
 
                 writer.writerow(["TIMING DATA"])
@@ -561,12 +598,12 @@ class DataLoggerNode(Node):
                 writer.writerow([])
 
                 writer.writerow(["VISITED CYLINDERS"])
-                writer.writerow(["Visit #", "X", "Y", "Arrival Time (s)", "Travel Time (s)"])
+                writer.writerow(["Visit #", "X", "Y", "Arrival Time (s)", "Travel Time (s)", "Battery Level (%)", "Below 25%?"])
                 
                 if len(self.visited_cylinders) == 0:
                     writer.writerow(["No cylinders visited during this run"])
 
-                for i, (x, y, arrival_time) in enumerate(self.visited_cylinders):
+                for i, (x, y, arrival_time, battery_pct) in enumerate(self.visited_cylinders):
                     arrival_time_s = (arrival_time - self.start_time).nanoseconds * 1e-9
 
                     if i == 0:
@@ -575,13 +612,37 @@ class DataLoggerNode(Node):
                         prev_arrival = self.visited_cylinders[i - 1][2]
                         travel_time = (arrival_time - prev_arrival).nanoseconds * 1e-9 - self.dwell_time
 
+                    below_threshold = "Yes" if battery_pct < self.low_battery_threshold else "No"
+
                     writer.writerow([
                         i + 1,
                         f"{x:.3f}",
                         f"{y:.3f}",
                         f"{arrival_time_s:.3f}",
                         f"{travel_time:.3f}",
+                        f"{battery_pct*100:.2f}",
+                        below_threshold,
                     ])
+                
+                writer.writerow([])
+                
+                # Summary of cylinders visited below 25%
+                low_battery_visits = [v for v in self.visited_cylinders if v[3] < self.low_battery_threshold]
+                if len(low_battery_visits) > 0:
+                    writer.writerow(["CYLINDERS VISITED BELOW 25% BATTERY"])
+                    writer.writerow(["Visit #", "X", "Y", "Arrival Time (s)", "Battery Level (%)"])
+                    for visit in low_battery_visits:
+                        x, y, arrival_time, battery_pct = visit
+                        arrival_time_s = (arrival_time - self.start_time).nanoseconds * 1e-9
+                        visit_num = self.visited_cylinders.index(visit) + 1
+                        writer.writerow([
+                            visit_num,
+                            f"{x:.3f}",
+                            f"{y:.3f}",
+                            f"{arrival_time_s:.3f}",
+                            f"{battery_pct*100:.2f}",
+                        ])
+                    writer.writerow([])
 
                 writer.writerow([])
 
@@ -594,9 +655,10 @@ class DataLoggerNode(Node):
 
             num_columns_tested = len(self.cylinder_positions)
             num_columns_visited = len(self.visited_cylinders)
+            run_display_name = self.run_name if self.run_name else f"Run {self.run_number}"
             
             print(f"\n{'='*60}")
-            print(f"Run {self.run_number} Complete - Data saved to {self.csv_file}")
+            print(f"{run_display_name} Complete - Data saved to {self.csv_file}")
             print(f"Number of columns tested: {num_columns_tested}")
             print(f"Number of columns visited: {num_columns_visited}")
             print(f"Summary: {num_columns_visited}/{num_columns_tested} cylinders, "
@@ -607,7 +669,7 @@ class DataLoggerNode(Node):
             
             self.get_logger().info(f"✓ Data saved to {self.csv_file}")
             self.get_logger().info(
-                f"Run {self.run_number}: {num_columns_visited}/{num_columns_tested} cylinders, "
+                f"{run_display_name}: {num_columns_visited}/{num_columns_tested} cylinders, "
                 f"{recharge_trip_count} trips, {total_sim_time:.1f}s total, "
                 f"{self.total_charging_time:.1f}s charging, "
                 f"{len(self.path_samples)} path samples"
@@ -638,9 +700,9 @@ class DataLoggerNode(Node):
                 writer.writerow(["Recharge Trips", len(self.recharge_trips)])
                 if self.visited_cylinders:
                     writer.writerow(["VISITED CYLINDERS"])
-                    writer.writerow(["Visit #", "X", "Y"])
-                    for i, (x, y, _) in enumerate(self.visited_cylinders):
-                        writer.writerow([i + 1, f"{x:.3f}", f"{y:.3f}"])
+                    writer.writerow(["Visit #", "X", "Y", "Battery Level (%)"])
+                    for i, (x, y, _, battery_pct) in enumerate(self.visited_cylinders):
+                        writer.writerow([i + 1, f"{x:.3f}", f"{y:.3f}", f"{battery_pct*100:.2f}"])
             
             print(f"\n{'='*60}")
             print(f"Run {self.run_number} - EMERGENCY SAVE")
