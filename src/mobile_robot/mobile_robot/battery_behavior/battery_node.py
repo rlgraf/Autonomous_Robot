@@ -29,6 +29,7 @@ DEFAULTS = {
     'charge_rate_a': 40.0,
     'charging_radius': 0.75,
     'stationary_thresh': 0.1,
+    'initial_battery_fraction': 1.0,  # Start at 100% (1.0) by default, can set to 0.5 for 50%, etc.
 }
 
 
@@ -50,6 +51,7 @@ class BatteryNode(Node):
         self._charge_rate = float(self.get_parameter('charge_rate_a').value)
         self._chg_radius = float(self.get_parameter('charging_radius').value)
         self._stat_thresh = float(self.get_parameter('stationary_thresh').value)
+        self._initial_battery_fraction = float(self.get_parameter('initial_battery_fraction').value)
 
         # Load stations and colors from YAML file
         params_file = os.path.join(
@@ -99,7 +101,8 @@ class BatteryNode(Node):
         self._init_timer = self.create_timer(0.5, self._lookup_station_ids)
 
         # State
-        self._charge_ah = self._capacity * 1.0  # current charge in Ah
+        # Initialize battery at specified fraction (default 1.0 = 100%)
+        self._charge_ah = self._capacity * self._initial_battery_fraction
         self._linear_vel = 0.0
         self._angular_vel = 0.0
         self._pos_x = 0.0
@@ -151,6 +154,10 @@ class BatteryNode(Node):
         self.create_timer(1.0 / self._rate_hz, self._update_battery)
 
         self.get_logger().info('Battery node started (using ground truth odometry).')
+        initial_pct = (self._charge_ah / self._capacity) * 100.0
+        self.get_logger().info(
+            f'Initial battery: {initial_pct:.1f}% ({self._charge_ah:.3f} Ah / {self._capacity:.3f} Ah)'
+        )
         self.get_logger().info(
             f'Capacity: {self._capacity} Ah | Idle drain: {self._idle_drain:.3f} A | '
             f'Movement drain: {self._move_drain} A/(m/s) linear, {self._turn_drain} A/(rad/s) angular'

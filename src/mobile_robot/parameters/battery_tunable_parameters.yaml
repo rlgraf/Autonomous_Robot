@@ -15,6 +15,7 @@ battery_node:
     charge_rate_a: 40.0
     charging_radius: 0.5
     stationary_thresh: 0.05
+    initial_battery_fraction: 1.0  # Start at 100% (1.0). Set to 0.5 for 50%, 0.25 for 25%, etc.
     charging_station_x: [-20.0, 20.0]
     charging_station_y: [0.0, 0.0]
 
