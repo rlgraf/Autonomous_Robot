@@ -259,10 +259,32 @@ def main():
         coord_file = Path(COORDINATE_FILE_REFERENCE)
         # Try relative to script directory first, then absolute path
         if not coord_file.is_absolute():
-            script_dir = Path(__file__).parent.parent.parent.parent  # Go up to workspace root
-            coord_file = script_dir / coord_file
+            # Try to find workspace root by looking for common markers
+            workspace_root = None
+            current = Path(__file__).resolve().parent
+            
+            # Look for workspace root (contains 'src' directory or is named 'Autonomous_Robot')
+            for _ in range(10):  # Limit search depth
+                if (current / "src").exists() or current.name == "Autonomous_Robot":
+                    workspace_root = current
+                    break
+                if current.parent == current:  # Reached filesystem root
+                    break
+                current = current.parent
+            
+            if workspace_root:
+                coord_file = workspace_root / coord_file
+            else:
+                # Fallback: try relative to script location (development mode)
+                script_dir = Path(__file__).parent.parent.parent.parent
+                coord_file = script_dir / coord_file
+        
         if not coord_file.exists():
-            raise FileNotFoundError(f"Coordinate file reference not found: {coord_file}")
+            raise FileNotFoundError(
+                f"Coordinate file reference not found: {coord_file}\n"
+                f"Tried to resolve: {COORDINATE_FILE_REFERENCE}\n"
+                f"Script location: {Path(__file__).resolve()}"
+            )
         
         with open(coord_file, 'r') as f:
             for line in f:
