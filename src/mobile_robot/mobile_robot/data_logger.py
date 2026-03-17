@@ -79,6 +79,11 @@ class DataLoggerNode(Node):
         self.total_travel_time: float = 0.0
         self.low_battery_threshold: float = 0.25  # 25% threshold
 
+        # Supervisor recommended candidate targets (from /recommended_target)
+        # Stored as (x, y, time, battery_pct)
+        self.candidate_targets: List[Tuple[float, float, Time, float]] = []
+        self.last_candidate_xy: Optional[Tuple[float, float]] = None
+
         # Recharge trips
         self.recharge_trips: List[Dict[str, Any]] = []
         self.current_trip: Optional[Dict[str, Any]] = None
@@ -134,6 +139,11 @@ class DataLoggerNode(Node):
         # Note: move5.py publishes to /visited_columns (not /visited_cylinders)
         self.create_subscription(Float32MultiArray, "/visited_columns", self._visited_callback, 10)
         self.get_logger().info("Subscribed to /visited_columns for cylinder visit tracking")
+
+        # Subscribe to supervisor recommended targets (candidate cylinders)
+        self.create_subscription(Float32MultiArray, "/recommended_target", self._candidate_callback, 10)
+        self.get_logger().info("Subscribed to /recommended_target for candidate tracking")
+
         self.create_subscription(Bool, "/recharge_active", self._recharge_callback, 10)
         self.create_subscription(BatteryState, "battery_status", self._battery_callback, 10)
 
@@ -190,6 +200,7 @@ class DataLoggerNode(Node):
     # Data loading
     # -------------------------------------------------------------------------
     def _load_cylinder_positions(self) -> List[Tuple[float, float]]:
+        """Load cylinder positions and optional run name from cache file."""
         data_dir = os.path.expanduser("~/Autonomous_Robot/data")
         cache_file = os.path.join(data_dir, "cylinder_positions.txt")
         cylinders: List[Tuple[float, float]] = []
@@ -202,13 +213,13 @@ class DataLoggerNode(Node):
             with open(cache_file, "r") as f:
                 for line in f:
                     line = line.strip()
-                    # Check for run name metadata
+                    # Run name metadata
                     if line.startswith("#RUN_NAME:"):
                         self.run_name = line.replace("#RUN_NAME:", "").strip()
                         continue
                     # Skip empty lines and comments
                     if not line or line.startswith("#"):
-                        continue
+                    continue
                     x, y = line.split(",")
                     cylinders.append((float(x.strip()), float(y.strip())))
             self.get_logger().info(f"Loaded {len(cylinders)} cylinders from cache")
@@ -229,7 +240,7 @@ class DataLoggerNode(Node):
                     self.save_data()
                     self._data_saved = True
                     self.get_logger().info("Data saved successfully from signal handler")
-            except Exception as e:
+        except Exception as e:
                 self.get_logger().error(f"Error saving data on shutdown: {e}")
                 # Try to save at least a partial file
                 try:
@@ -290,6 +301,36 @@ class DataLoggerNode(Node):
             print(f"[DATA LOGGER] Cylinder visited at ({x:.2f}, {y:+.2f}) - Battery: {battery_pct*100:.1f}% - Total: {len(self.visited_cylinders)}/{len(self.cylinder_positions)}")
         except (ValueError, IndexError) as e:
             self.get_logger().error(f"Error parsing visited_columns message: {e}, data: {msg.data}")
+
+    def _candidate_callback(self, msg: Float32MultiArray):
+        """Track supervisor recommended candidate targets from /recommended_target."""
+        # Empty data means "no candidate" - do not record, just note at debug level
+        if len(msg.data) < 2:
+            self.get_logger().debug("Received empty /recommended_target (no candidate)")
+                return
+
+        try:
+            wx = float(msg.data[0])
+            wy = float(msg.data[1])
+            now = self.get_clock().now()
+
+            # Avoid flooding the log/data with tiny jitter around the same target
+            if self.last_candidate_xy is not None:
+                last_x, last_y = self.last_candidate_xy
+                if math.hypot(wx - last_x, wy - last_y) < 0.1:
+                    return
+
+            self.last_candidate_xy = (wx, wy)
+            battery_pct = self.current_battery_pct
+            self.candidate_targets.append((wx, wy, now, battery_pct))
+
+            self.get_logger().info(
+                f"[DATA LOGGER] Candidate target at ({wx:.2f}, {wy:+.2f}) - "
+                f"Battery: {battery_pct*100:.1f}% - "
+                f"Total candidates: {len(self.candidate_targets)}"
+            )
+        except (ValueError, IndexError) as e:
+            self.get_logger().error(f"Error parsing recommended_target message: {e}, data: {msg.data}")
 
     def _recharge_callback(self, msg: Bool):
         now = self.get_clock().now()
@@ -377,7 +418,7 @@ class DataLoggerNode(Node):
         elif abs(delta) <= self._trend_stop_thresh:
             self._trend_dec_count += 1
             self._trend_inc_count = 0
-        else:
+                else:
             self._trend_dec_count += 1
             self._trend_inc_count = 0
 
@@ -535,7 +576,7 @@ class DataLoggerNode(Node):
                 writer.writerow(["BATTERY DATA"])
                 writer.writerow(["Total Battery Spent To Reach Stations (%)", f"{total_battery_to_stations*100:.3f}"])
                 writer.writerow([])
-
+                
                 writer.writerow(["RECHARGE TRIPS"])
                 writer.writerow([
                     "Trip #",
@@ -582,7 +623,7 @@ class DataLoggerNode(Node):
                         fmt_pct(trip.get("battery_gain")),
                         trip.get("finalized_reason", "") or "",
                     ])
-
+                
                 writer.writerow([])
 
                 writer.writerow(["RECHARGE STATIONS"])
@@ -643,6 +684,25 @@ class DataLoggerNode(Node):
                             f"{battery_pct*100:.2f}",
                         ])
                     writer.writerow([])
+
+                writer.writerow([])
+
+                # -------------------- Candidate targets from supervisor --------------------
+                writer.writerow(["CANDIDATE TARGETS"])
+                writer.writerow(["Candidate #", "X", "Y", "Time (s)", "Battery Level (%)"])
+
+                if len(self.candidate_targets) == 0:
+                    writer.writerow(["No candidate targets recorded"])
+                else:
+                    for i, (wx, wy, t_candidate, batt_pct) in enumerate(self.candidate_targets):
+                        t_s = (t_candidate - self.start_time).nanoseconds * 1e-9
+                        writer.writerow([
+                            i + 1,
+                            f"{wx:.3f}",
+                            f"{wy:.3f}",
+                            f"{t_s:.3f}",
+                            f"{batt_pct*100:.2f}",
+                        ])
 
                 writer.writerow([])
 
@@ -729,10 +789,10 @@ def main(args=None):
         node._shutdown_requested = True
     finally:
         # Always try to save data on shutdown - this is the last chance
-        if not hasattr(node, '_data_saved') or not node._data_saved:
+        if not hasattr(node, "_data_saved") or not node._data_saved:
             try:
                 node.get_logger().info("Saving data in finally block...")
-                node.save_data()
+        node.save_data()
                 node._data_saved = True
                 node.get_logger().info("Data saved successfully in finally block")
             except Exception as e:
@@ -744,10 +804,10 @@ def main(args=None):
                     node.get_logger().error(f"Emergency save in finally block also failed: {e2}")
         else:
             node.get_logger().info("Data already saved, skipping save in finally block")
-        
+
         try:
-            node.destroy_node()
-            rclpy.shutdown()
+        node.destroy_node()
+        rclpy.shutdown()
         except Exception as e:
             # If shutdown fails, at least we tried to save
             node.get_logger().error(f"Error during node shutdown: {e}")
