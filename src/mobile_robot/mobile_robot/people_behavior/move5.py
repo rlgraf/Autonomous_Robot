@@ -66,6 +66,7 @@ class ObjectNavigator(Node):
         # Latest supervisor-recommended target (world coords)
         self._recommended_wx: float | None = None
         self._recommended_wy: float | None = None
+        self._recommended_available_stamp = None
 
         # State machine
         self.state = self.SEARCHING
@@ -129,9 +130,11 @@ class ObjectNavigator(Node):
         if math.isfinite(wx) and math.isfinite(wy):
             self._recommended_wx = wx
             self._recommended_wy = wy
+            self._recommended_available_stamp = self.get_clock().now()
         else:
             self._recommended_wx = None
             self._recommended_wy = None
+            self._recommended_available_stamp = None
 
     def odom_callback(self, msg: Odometry):
         self.robot_x = msg.pose.pose.position.x
@@ -231,21 +234,25 @@ class ObjectNavigator(Node):
         # During low-battery "visit before recharge", the supervisor publishes a
         # desired cylinder as /recommended_target. Follow it when we don't
         # already have an active target.
-        if (
-            self.low_battery_shutdown
-            and (not self.supervisor_active)
-            and self._recommended_wx is not None
-            and self._recommended_wy is not None
-        ):
-            self._stop()
-            self.target_wx = self._recommended_wx
-            self.target_wy = self._recommended_wy
-            self._using_recommended_target = True
-            self.get_logger().info(
-                f'Using supervisor recommended target: ({self.target_wx:.2f}, {self.target_wy:.2f})'
-            )
-            self.state = self.ROTATING
-            return
+        if self.low_battery_shutdown and (not self.supervisor_active):
+            # Hard requirement: in this phase we do not "freestyle" picking
+            # cylinders. If the supervisor hasn't provided a recommended
+            # target yet, just rotate and wait for /recommended_target.
+            if self._recommended_wx is not None and self._recommended_wy is not None:
+                self._stop()
+                self.target_wx = self._recommended_wx
+                self.target_wy = self._recommended_wy
+                self._using_recommended_target = True
+                self.get_logger().info(
+                    f'Using supervisor recommended target: ({self.target_wx:.2f}, {self.target_wy:.2f})'
+                )
+                self.state = self.ROTATING
+                return
+            else:
+                twist = Twist()
+                twist.angular.z = ANGULAR_SPEED
+                self.cmd_pub.publish(twist)
+                return
 
         target = self._pick_nearest_unvisited()
         if target is not None:
