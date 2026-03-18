@@ -244,14 +244,15 @@ class SupervisorArbiter(Node):
         """
         Publishes decision metrics in this fixed order:
 
-        [0] score
+        [0] reward (total score)
         [1] extra_distance
         [2] margin
         [3] obj_distance
         [4] obj_to_charger_distance
-        [5] predicted_drain
+        [5] predicted_drain_per_meter
         [6] battery_pct
         [7] decision_mode_code
+        [8] energy_needed (cost in battery fraction)
 
         decision_mode_code:
             0.0 -> NORMAL / no forced low-battery decision active
@@ -268,9 +269,10 @@ class SupervisorArbiter(Node):
                 float("nan"),                 # margin
                 float("nan"),                 # obj_distance
                 float("nan"),                 # obj_to_charger_distance
-                float(self.drain_per_meter),  # predicted_drain
+                float(self.drain_per_meter),  # predicted_drain_per_meter
                 float(self.battery_fraction), # battery_pct
                 float(decision_mode_code),    # decision_mode_code
+                float("nan"),                 # energy_needed (cost)
             ]
         else:
             msg.data = [
@@ -282,6 +284,7 @@ class SupervisorArbiter(Node):
                 float(self.drain_per_meter),
                 float(self.battery_fraction),
                 float(decision_mode_code),
+                float(best_candidate.get("energy_needed", float("nan"))),
             ]
 
         self.decision_metrics_pub.publish(msg)

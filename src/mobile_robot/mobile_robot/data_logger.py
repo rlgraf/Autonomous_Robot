@@ -137,6 +137,9 @@ class DataLoggerNode(Node):
         # Totals
         self.total_charging_time: float = 0.0
 
+        # Decision metrics from supervisor (reward/cost, etc.)
+        self.decision_metrics_log: List[Dict[str, Any]] = []
+
         # Timing
         self.start_time: Time = self.get_clock().now()
         # Wall-clock timestamps for easier offline correlation/debugging.
@@ -175,8 +178,13 @@ class DataLoggerNode(Node):
         self.create_subscription(Float32MultiArray, "/recommended_target", self._candidate_callback, 10)
         self.get_logger().info("Subscribed to /recommended_target for candidate tracking")
 
+        # Subscribe to supervisor decision metrics (includes reward + energy-cost)
+        self.create_subscription(Float32MultiArray, "/decision_metrics", self._decision_metrics_callback, 10)
+        self.get_logger().info("Subscribed to /decision_metrics for reward/cost tracking")
+
         self.create_subscription(Bool, "/recharge_active", self._recharge_callback, 10)
-        self.create_subscription(BatteryState, "battery_status", self._battery_callback, 10)
+        # Supervisor publishes to `/battery_status` (absolute topic name), so match it exactly.
+        self.create_subscription(BatteryState, "/battery_status", self._battery_callback, 10)
 
         # Choose whichever odometry topic your robot actually publishes
         # Replace "/gt_odom" with your real topic if needed.
@@ -376,14 +384,12 @@ class DataLoggerNode(Node):
 
             cylinder_idx = self._match_candidate_to_cylinder(wx, wy)
             if cylinder_idx is None:
-                # Recommended point isn't close to any known cylinder; ignore for
-                # "candidate count" purposes.
+                # Still record the candidate target even if we can't map it to a
+                # known cylinder position. This helps debugging coordinate mismatches.
                 self.get_logger().debug(
-                    f"Ignoring candidate at ({wx:.2f}, {wy:+.2f}) - no nearby cylinder match"
+                    f"Candidate at ({wx:.2f}, {wy:+.2f}) had no nearby cylinder match (recording anyway)"
                 )
-                return
-
-            if cylinder_idx in self._seen_candidate_cylinders:
+            elif cylinder_idx in self._seen_candidate_cylinders:
                 # Already recorded this cylinder as a candidate once during this run.
                 return
 
@@ -396,7 +402,8 @@ class DataLoggerNode(Node):
             self.last_candidate_xy = (wx, wy)
             battery_pct = self.current_battery_pct
             self.candidate_targets.append((wx, wy, now, battery_pct))
-            self._seen_candidate_cylinders.add(cylinder_idx)
+            if cylinder_idx is not None:
+                self._seen_candidate_cylinders.add(cylinder_idx)
 
             self.get_logger().info(
                 f"[DATA LOGGER] Candidate target at ({wx:.2f}, {wy:+.2f}) - "
@@ -405,6 +412,58 @@ class DataLoggerNode(Node):
             )
         except (ValueError, IndexError) as e:
             self.get_logger().error(f"Error parsing recommended_target message: {e}, data: {msg.data}")
+
+    def _decision_metrics_callback(self, msg: Float32MultiArray):
+        """Log supervisor decision metrics so reward/cost can be tracked."""
+        data = msg.data
+        # Expected order (see supervisor_node.py):
+        # [0] reward(score), [1] extra_distance, [2] margin, [3] obj_distance,
+        # [4] obj_to_charger_distance, [5] predicted_drain_per_meter,
+        # [6] battery_pct, [7] decision_mode_code, [8] energy_needed(cost)
+        if len(data) < 8:
+            self.get_logger().debug(f"Received /decision_metrics with insufficient length: {len(data)}")
+            return
+
+        def _get(i: int) -> float:
+            try:
+                return float(data[i])
+            except Exception:
+                return float("nan")
+
+        score = _get(0)
+        extra_distance = _get(1)
+        margin = _get(2)
+        obj_distance = _get(3)
+        obj_to_charger_distance = _get(4)
+        predicted_drain_per_meter = _get(5)
+        battery_pct = _get(6)
+        decision_mode_code = _get(7)
+        energy_needed = _get(8) if len(data) >= 9 else float("nan")
+
+        # Treat "reward" as the supervisor's total score.
+        reward = score
+        # Treat "cost" as the battery energy fraction needed to make the visit feasible.
+        cost = energy_needed
+
+        if not (math.isfinite(reward) or math.isfinite(cost)):
+            return
+
+        now = self.get_clock().now()
+        self.decision_metrics_log.append(
+            {
+                "time": now,
+                "reward": reward,
+                "cost": cost,
+                "score": score,
+                "extra_distance": extra_distance,
+                "margin": margin,
+                "obj_distance": obj_distance,
+                "obj_to_charger_distance": obj_to_charger_distance,
+                "predicted_drain_per_meter": predicted_drain_per_meter,
+                "battery_pct": battery_pct,
+                "decision_mode_code": decision_mode_code,
+            }
+        )
 
     def _recharge_callback(self, msg: Bool):
         now = self.get_clock().now()
@@ -468,8 +527,6 @@ class DataLoggerNode(Node):
                 # Then we'll re-track the next low-battery decision phase.
                 self._candidate_tracking_enabled = False
                 self._candidate_tracking_waiting_for_threshold_cross = True
-                self.candidate_targets.clear()
-                self._seen_candidate_cylinders.clear()
                 self.last_candidate_xy = None
 
         self.last_recharge_active = bool(msg.data)
@@ -804,6 +861,70 @@ class DataLoggerNode(Node):
                             f"{t_s:.3f}",
                             f"{batt_pct*100:.2f}",
                         ])
+
+                writer.writerow([])
+
+                # -------------------- Decision metrics (reward/cost) --------------------
+                writer.writerow(["DECISION METRICS"])
+                writer.writerow(
+                    [
+                        "Decision #",
+                        "Time (s)",
+                        "Decision Mode Code",
+                        "Reward (score)",
+                        "Cost (energy_needed)",
+                        "Extra Distance",
+                        "Margin",
+                        "Obj Distance",
+                        "Obj->Charger Distance",
+                        "Battery Level (%)",
+                    ]
+                )
+
+                if len(self.decision_metrics_log) == 0:
+                    writer.writerow(["No decision metrics recorded"])
+                else:
+                    # Summary (only low-battery decision modes where energy cost is expected)
+                    low_batt_metrics = [
+                        d
+                        for d in self.decision_metrics_log
+                        if d.get("decision_mode_code") in (1.0, 2.0) and math.isfinite(float(d.get("cost", float("nan"))))
+                    ]
+                    if low_batt_metrics:
+                        avg_reward = sum(float(d["reward"]) for d in low_batt_metrics) / len(low_batt_metrics)
+                        avg_cost = sum(float(d["cost"]) for d in low_batt_metrics) / len(low_batt_metrics)
+                        writer.writerow(
+                            [
+                                "LOW_BATT SUMMARY (ALLOW_ONE_VISIT + FORCE_RECHARGE)",
+                                "",
+                                "",
+                                f"{avg_reward:.6f}",
+                                f"{avg_cost:.6f}",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                            ]
+                        )
+                        writer.writerow([])
+
+                    for i, d in enumerate(self.decision_metrics_log):
+                        t_s = (d["time"] - self.start_time).nanoseconds * 1e-9
+                        writer.writerow(
+                            [
+                                i + 1,
+                                f"{t_s:.3f}",
+                                f"{float(d.get('decision_mode_code', float('nan'))):.1f}",
+                                f"{float(d.get('reward', float('nan'))):.6f}",
+                                f"{float(d.get('cost', float('nan'))):.6f}" if math.isfinite(float(d.get("cost", float("nan")))) else "nan",
+                                f"{float(d.get('extra_distance', float('nan'))):.6f}" if math.isfinite(float(d.get("extra_distance", float("nan")))) else "nan",
+                                f"{float(d.get('margin', float('nan'))):.6f}" if math.isfinite(float(d.get("margin", float("nan")))) else "nan",
+                                f"{float(d.get('obj_distance', float('nan'))):.6f}" if math.isfinite(float(d.get("obj_distance", float("nan")))) else "nan",
+                                f"{float(d.get('obj_to_charger_distance', float('nan'))):.6f}" if math.isfinite(float(d.get("obj_to_charger_distance", float("nan")))) else "nan",
+                                f"{float(d.get('battery_pct', float('nan')) * 100.0):.3f}" if math.isfinite(float(d.get("battery_pct", float("nan")))) else "nan",
+                            ]
+                        )
 
                 writer.writerow([])
 
