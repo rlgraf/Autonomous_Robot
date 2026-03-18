@@ -102,6 +102,12 @@ class SupervisorArbiter(Node):
         self.declare_parameter("lidar_clearance_margin", 0.25)
         self.declare_parameter("scan_window_deg", 15.0)
         self.declare_parameter("max_object_considered_m", 10.0)
+        # How many sequential cylinder visits we allow after entering the
+        # low-battery "visit before recharge" mode.
+        # Previously this was effectively limited by a "near station" check
+        # at depart completion time; increasing this lets the rewards system
+        # continue selecting new cylinders until the next visit is infeasible.
+        self.declare_parameter("max_visits_before_recharge", 3)
 
         # flat list: [x1, y1, x2, y2, ...]
         self.declare_parameter("charging_stations", [0.0, 0.0])
@@ -152,8 +158,10 @@ class SupervisorArbiter(Node):
         # become stationary inside the charging radius).
         self._force_recharge_seen_charging: bool = False
         self.best_candidate = None
-        self.visit_count_near_station = 0  # Track visits when near station
-        self.max_visits_near_station = 3  # Allow up to 3 visits when very close to station
+        self.low_batt_visit_count = 0  # Track completed low-battery visits
+        self.max_visits_before_recharge = int(
+            self.get_parameter("max_visits_before_recharge").value
+        )
 
         self.last_logged_mode = ""
 
@@ -362,38 +370,28 @@ class SupervisorArbiter(Node):
 
         self._publish_event("DEPART_REQUEST_RECEIVED")
 
-        if self.low_batt_mode == self.LOW_BATT_ALLOW_ONE_VISIT and not self.allowed_visit_consumed:
-            # Check if we're near a station - if so, allow multiple visits
-            station, dist_to_charger = self._nearest_station()
-            near_station = (station is not None and dist_to_charger < 10.0)
-            
-            if near_station:
-                self.visit_count_near_station += 1
-                self.get_logger().info(
-                    f"Visit {self.visit_count_near_station}/{self.max_visits_near_station} near station "
-                    f"(dist={dist_to_charger:.2f}m) completed. "
-                    f"{'Allowing more visits.' if self.visit_count_near_station < self.max_visits_near_station else 'Max visits reached, will force recharge.'}"
-                )
-                
-                if self.visit_count_near_station >= self.max_visits_near_station:
-                    # Max visits reached, force recharge
-                    self.allowed_visit_consumed = True
-                    self.pending_force_recharge_after_depart = True
-                    self.visit_count_near_station = 0  # Reset counter
-                    self._publish_event("ALLOWED_VISIT_CONSUMED_MAX_REACHED")
-                else:
-                    # Reset to allow re-evaluation for another visit
-                    self.low_batt_decision_made = False
-                    self.best_candidate = None
-                    self._publish_event(f"ALLOWED_VISIT_NEAR_STATION_{self.visit_count_near_station}")
-            else:
-                # Not near station - only one visit allowed
+        if (
+            self.low_batt_mode == self.LOW_BATT_ALLOW_ONE_VISIT
+            and not self.allowed_visit_consumed
+        ):
+            # Allow multiple sequential visits before we force recharge.
+            # Each next visit is still chosen via `_evaluate_visit_before_recharge()`,
+            # which checks battery feasibility to reach a charger after that visit.
+            self.low_batt_visit_count += 1
+            self.get_logger().info(
+                f"Low-battery visit {self.low_batt_visit_count}/{self.max_visits_before_recharge} completed. "
+                f"{'Allowing another visit.' if self.low_batt_visit_count < self.max_visits_before_recharge else 'Max visits reached, will force recharge.'}"
+            )
+
+            if self.low_batt_visit_count >= self.max_visits_before_recharge:
                 self.allowed_visit_consumed = True
                 self.pending_force_recharge_after_depart = True
-                self.get_logger().info(
-                    "Allowed low-battery visit completed. Will force recharge after depart."
-                )
-                self._publish_event("ALLOWED_VISIT_CONSUMED")
+                self._publish_event("ALLOWED_VISIT_CONSUMED_MAX_REACHED")
+            else:
+                # Reset so the supervisor can pick a fresh next cylinder.
+                self.low_batt_decision_made = False
+                self.best_candidate = None
+                self._publish_event(f"ALLOWED_VISIT_BEFORE_RECHARGE_{self.low_batt_visit_count}")
 
         if not self.depart_active:
             self.depart_active = True
@@ -829,7 +827,8 @@ class SupervisorArbiter(Node):
         """
         Latched logic:
           - NORMAL -> evaluate once when battery crosses threshold
-          - ALLOW_ONE_VISIT -> hold until depart after that visit
+          - ALLOW_ONE_VISIT -> hold and repeatedly select new cylinders until
+            we reach `max_visits_before_recharge` or no feasible visit exists
           - FORCE_RECHARGE -> hold until recharge_active clears
         """
         if not self.have_battery:
@@ -854,7 +853,7 @@ class SupervisorArbiter(Node):
                 self.allowed_visit_consumed = False
                 self.pending_force_recharge_after_depart = False
                 self.best_candidate = None
-                self.visit_count_near_station = 0  # Reset visit counter after recharge
+                self.low_batt_visit_count = 0  # Reset visit counter after recharge
                 self._force_recharge_seen_charging = False
 
                 self._publish_decision_metrics(None, self.MODE_CODE_NORMAL)
@@ -889,42 +888,33 @@ class SupervisorArbiter(Node):
                 )
                 return
             
-            # If no candidate but we're near station and haven't consumed all visits, re-evaluate
-            if not self.allowed_visit_consumed:
-                station, dist_to_charger = self._nearest_station()
-                near_station = (station is not None and dist_to_charger < 10.0)
-                
-                if near_station and self.visit_count_near_station < self.max_visits_near_station:
-                    # Re-evaluate for another visit
-                    self.get_logger().info(
-                        f"Re-evaluating for visit {self.visit_count_near_station + 1} near station "
-                        f"(dist={dist_to_charger:.2f}m)"
+            # If no candidate and we still haven't consumed all visits, re-evaluate.
+            if not self.allowed_visit_consumed and self.low_batt_visit_count < self.max_visits_before_recharge:
+                allow_visit, best = self._evaluate_visit_before_recharge()
+
+                if allow_visit and best is not None:
+                    self.best_candidate = best
+                    self._publish_decision_metrics(best, self.MODE_CODE_ALLOW_ONE_VISIT)
+                    self._log_mode_once(
+                        f"LOW_BATTERY_ALLOW_ONE_VISIT (re-evaluated) "
+                        f"score={best['score']:.3f} "
+                        f"obj_d={best['obj_distance']:.2f}m "
+                        f"extra_d={best['extra_distance']:.2f}m "
+                        f"margin={best['margin']:.3f}"
                     )
-                    allow_visit, best = self._evaluate_visit_before_recharge()
-                    
-                    if allow_visit and best is not None:
-                        self.best_candidate = best
-                        self._publish_decision_metrics(best, self.MODE_CODE_ALLOW_ONE_VISIT)
-                        self._log_mode_once(
-                            f"LOW_BATTERY_ALLOW_ONE_VISIT (re-evaluated) "
-                            f"score={best['score']:.3f} "
-                            f"obj_d={best['obj_distance']:.2f}m "
-                            f"extra_d={best['extra_distance']:.2f}m "
-                            f"margin={best['margin']:.3f}"
-                        )
-                        return
-                    else:
-                        # No feasible visit found, force recharge
-                        self.get_logger().info(
-                            f"No feasible visit found near station. Forcing recharge."
-                        )
-                        self.allowed_visit_consumed = True
-                        self.pending_force_recharge_after_depart = True
-                        self.visit_count_near_station = 0
-                        self.low_batt_mode = self.LOW_BATT_FORCE_RECHARGE
-                        self._force_recharge_seen_charging = False
-                        self._publish_decision_metrics(None, self.MODE_CODE_FORCE_RECHARGE)
-                        return
+                    return
+                else:
+                    # No feasible visit found (battery constraints), force recharge
+                    self.get_logger().info(
+                        "No feasible low-battery visit found. Forcing recharge."
+                    )
+                    self.allowed_visit_consumed = True
+                    self.pending_force_recharge_after_depart = True
+                    self.low_batt_visit_count = 0
+                    self.low_batt_mode = self.LOW_BATT_FORCE_RECHARGE
+                    self._force_recharge_seen_charging = False
+                    self._publish_decision_metrics(None, self.MODE_CODE_FORCE_RECHARGE)
+                    return
             
             # No candidate and can't re-evaluate - should force recharge
             if self.best_candidate is None:
