@@ -50,6 +50,11 @@ supervisor_node:
     # Maximum distance for considering objects as visit targets
     max_object_considered_m: 15.0
 
+    # When evaluating "visit before recharge", only require near-field
+    # corridor clearance toward a candidate cylinder.
+    # This avoids rejecting far objects due to intermediate obstacles.
+    object_clearance_check_cap_m: 2.0
+
     # Charging station coordinates [x1, y1, x2, y2, ...]
     charging_stations: [-20.0, 0.0, 20.0, 0.0]
 

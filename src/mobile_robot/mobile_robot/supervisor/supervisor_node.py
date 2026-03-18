@@ -102,6 +102,11 @@ class SupervisorArbiter(Node):
         self.declare_parameter("lidar_clearance_margin", 0.25)
         self.declare_parameter("scan_window_deg", 15.0)
         self.declare_parameter("max_object_considered_m", 10.0)
+        # When evaluating "visit before recharge", don't require the entire
+        # long-range corridor to be obstacle-free. Instead, cap the
+        # clearance distance check to near-field so feasible candidates
+        # aren't rejected due to any intermediate obstacle.
+        self.declare_parameter("object_clearance_check_cap_m", 2.0)
         # How many sequential cylinder visits we allow after entering the
         # low-battery "visit before recharge" mode.
         # Previously this was effectively limited by a "near station" check
@@ -134,6 +139,7 @@ class SupervisorArbiter(Node):
         self.lidar_clearance_margin = float(self.get_parameter("lidar_clearance_margin").value)
         self.scan_window = math.radians(float(self.get_parameter("scan_window_deg").value))
         self.max_object_considered_m = float(self.get_parameter("max_object_considered_m").value)
+        self.object_clearance_check_cap_m = float(self.get_parameter("object_clearance_check_cap_m").value)
 
         flat_stations = list(self.get_parameter("charging_stations").value)
         self.charging_stations = self._parse_station_list(flat_stations)
@@ -652,7 +658,12 @@ class SupervisorArbiter(Node):
             if abs(wrap_to_pi(obj_bearing - charger_bearing)) > effective_corridor_angle:
                 continue
 
-            if not self._direction_clear(obj_bearing, max(0.0, d_obj - self.target_capture_radius)):
+            # Only require near-field clearance toward the object.
+            # Otherwise, any obstacle anywhere along the wedge can reject far
+            # objects (causing "no feasible visit -> forced recharge" too early).
+            required_clearance = max(0.0, d_obj - self.target_capture_radius)
+            required_clearance = min(required_clearance, self.object_clearance_check_cap_m)
+            if not self._direction_clear(obj_bearing, required_clearance):
                 continue
 
             obj_wx, obj_wy = self._robot_to_world(xr, yr)
