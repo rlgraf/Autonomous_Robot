@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    bridge_odom = Node(
+     bridge_odom = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         name='odom_gt_bridge',
