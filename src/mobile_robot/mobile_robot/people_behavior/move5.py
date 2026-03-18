@@ -174,7 +174,12 @@ class ObjectNavigator(Node):
             return
 
         # Stop all guest interaction when battery is low
-        if self.low_battery_shutdown:
+        # `battery_node` emits `/low_battery_warning` at a fixed percentage.
+        # The supervisor arbiter decides whether we're allowed to keep
+        # navigating (e.g., LOW_BATT_ALLOW_ONE_VISIT) or must recharge.
+        # So we only yield guest interaction when the supervisor is actively
+        # taking over /cmd_vel.
+        if self.low_battery_shutdown and self.supervisor_active:
             return
 
         # If supervisor has control, do not publish /cmd_vel

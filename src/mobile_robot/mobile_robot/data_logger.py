@@ -54,6 +54,22 @@ class DataLoggerNode(Node):
         bat_params = config["battery_node"]["ros__parameters"]
         rech_params = config["auto_recharge_node"]["ros__parameters"]
 
+        # Supervisor decision threshold (used to decide when to start tracking
+        # candidate targets).
+        decision_battery_threshold: float = 0.25
+        try:
+            decider_yaml = os.path.join(pkg, "parameters", "decider_parameters.yaml")
+            if os.path.exists(decider_yaml):
+                with open(decider_yaml, "r") as f:
+                    decider_config = yaml.safe_load(f)
+                dec_params = decider_config.get("supervisor_node", {}).get("ros__parameters", {})
+                decision_battery_threshold = float(
+                    dec_params.get("decision_battery_threshold", decision_battery_threshold)
+                )
+        except Exception as e:
+            # Fall back to a sane default if the YAML can't be read.
+            print(f"[DATA LOGGER] Warning: could not load decider_parameters.yaml: {e}")
+
         # Handle both formats: charging_stations list or charging_station_x/y arrays
         if "charging_stations" in bat_params:
             self.charging_stations: List[Tuple[float, float]] = [tuple(s) for s in bat_params["charging_stations"]]
@@ -77,12 +93,24 @@ class DataLoggerNode(Node):
         self.visited_cylinders: List[Tuple[float, float, Time, float]] = []  # (x,y,arrival_time,battery_pct)
         self.last_visit_time: Optional[Time] = None
         self.total_travel_time: float = 0.0
-        self.low_battery_threshold: float = 0.25  # 25% threshold
+        # Used for "below threshold?" labeling and for enabling candidate tracking.
+        self.low_battery_threshold: float = decision_battery_threshold
+
+        # Only start recording /recommended_target candidates once the battery
+        # level hits the supervisor decision threshold.
+        self._candidate_tracking_threshold: float = decision_battery_threshold
+        self._candidate_tracking_enabled: bool = False
+        # When True, we will only re-enable candidate tracking after the battery
+        # crosses downward through the threshold (prev > thr and curr <= thr).
+        self._candidate_tracking_waiting_for_threshold_cross: bool = True
 
         # Supervisor recommended candidate targets (from /recommended_target)
         # Stored as (x, y, time, battery_pct)
         self.candidate_targets: List[Tuple[float, float, Time, float]] = []
         self.last_candidate_xy: Optional[Tuple[float, float]] = None
+        # Track unique candidate cylinders so "Total candidates" never exceeds the
+        # number of cylinders in this run.
+        self._seen_candidate_cylinders: set[int] = set()
 
         # Recharge trips
         self.recharge_trips: List[Dict[str, Any]] = []
@@ -111,6 +139,9 @@ class DataLoggerNode(Node):
 
         # Timing
         self.start_time: Time = self.get_clock().now()
+        # Wall-clock timestamps for easier offline correlation/debugging.
+        # (ROS time is monotonic and not human-readable.)
+        self.run_start_wall_time_iso: str = datetime.now().isoformat(timespec="seconds")
         
         # Simulation time scaling (real-time factor)
         # Try to read from generated world file, default to 1.0
@@ -219,7 +250,7 @@ class DataLoggerNode(Node):
                         continue
                     # Skip empty lines and comments
                     if not line or line.startswith("#"):
-                    continue
+                        continue
                     x, y = line.split(",")
                     cylinders.append((float(x.strip()), float(y.strip())))
             self.get_logger().info(f"Loaded {len(cylinders)} cylinders from cache")
@@ -240,7 +271,7 @@ class DataLoggerNode(Node):
                     self.save_data()
                     self._data_saved = True
                     self.get_logger().info("Data saved successfully from signal handler")
-        except Exception as e:
+            except Exception as e:
                 self.get_logger().error(f"Error saving data on shutdown: {e}")
                 # Try to save at least a partial file
                 try:
@@ -302,17 +333,59 @@ class DataLoggerNode(Node):
         except (ValueError, IndexError) as e:
             self.get_logger().error(f"Error parsing visited_columns message: {e}, data: {msg.data}")
 
+    def _match_candidate_to_cylinder(self, wx: float, wy: float, distance_threshold: float = 0.25) -> Optional[int]:
+        """Map a recommended (wx, wy) to the nearest cylinder index.
+
+        Returns None if no cylinder is close enough.
+        """
+        if not self.cylinder_positions:
+            return None
+
+        best_idx: Optional[int] = None
+        best_d2: float = float("inf")
+        for i, (cx, cy) in enumerate(self.cylinder_positions):
+            dx = wx - cx
+            dy = wy - cy
+            d2 = dx * dx + dy * dy
+            if d2 < best_d2:
+                best_d2 = d2
+                best_idx = i
+
+        if best_idx is None:
+            return None
+
+        if best_d2 <= distance_threshold * distance_threshold:
+            return best_idx
+        return None
+
     def _candidate_callback(self, msg: Float32MultiArray):
         """Track supervisor recommended candidate targets from /recommended_target."""
         # Empty data means "no candidate" - do not record, just note at debug level
         if len(msg.data) < 2:
             self.get_logger().debug("Received empty /recommended_target (no candidate)")
-                return
+            return
+
+        # Ignore candidates until battery reaches the supervisor decision threshold.
+        if not self._candidate_tracking_enabled:
+            return
 
         try:
             wx = float(msg.data[0])
             wy = float(msg.data[1])
             now = self.get_clock().now()
+
+            cylinder_idx = self._match_candidate_to_cylinder(wx, wy)
+            if cylinder_idx is None:
+                # Recommended point isn't close to any known cylinder; ignore for
+                # "candidate count" purposes.
+                self.get_logger().debug(
+                    f"Ignoring candidate at ({wx:.2f}, {wy:+.2f}) - no nearby cylinder match"
+                )
+                return
+
+            if cylinder_idx in self._seen_candidate_cylinders:
+                # Already recorded this cylinder as a candidate once during this run.
+                return
 
             # Avoid flooding the log/data with tiny jitter around the same target
             if self.last_candidate_xy is not None:
@@ -323,6 +396,7 @@ class DataLoggerNode(Node):
             self.last_candidate_xy = (wx, wy)
             battery_pct = self.current_battery_pct
             self.candidate_targets.append((wx, wy, now, battery_pct))
+            self._seen_candidate_cylinders.add(cylinder_idx)
 
             self.get_logger().info(
                 f"[DATA LOGGER] Candidate target at ({wx:.2f}, {wy:+.2f}) - "
@@ -369,6 +443,11 @@ class DataLoggerNode(Node):
             self.current_trip = trip
 
             self.get_logger().info(f"Recharge trip #{trip_number} started at {self.current_battery_pct*100:.1f}%")
+            # Stop candidate tracking while we are heading to/charging at the station.
+            # We'll re-enable only after battery crosses downward through the
+            # supervisor decision threshold again.
+            self._candidate_tracking_enabled = False
+            self._candidate_tracking_waiting_for_threshold_cross = True
 
         elif (not msg.data) and self.last_recharge_active:
             if self.current_trip is not None and self.current_trip.get("arrival_time") is None:
@@ -385,6 +464,13 @@ class DataLoggerNode(Node):
                     f"Arrived at station: {trip_duration:.1f}s, "
                     f"battery {self.current_trip['battery_at_trip_start']*100:.1f}% → {self.current_battery_pct*100:.1f}%"
                 )
+                # Reset candidate tracking after reaching the charging station.
+                # Then we'll re-track the next low-battery decision phase.
+                self._candidate_tracking_enabled = False
+                self._candidate_tracking_waiting_for_threshold_cross = True
+                self.candidate_targets.clear()
+                self._seen_candidate_cylinders.clear()
+                self.last_candidate_xy = None
 
         self.last_recharge_active = bool(msg.data)
 
@@ -394,6 +480,18 @@ class DataLoggerNode(Node):
         self.prev_battery_pct = self.current_battery_pct
         if msg.percentage is not None:
             self.current_battery_pct = float(msg.percentage)
+
+        # Enable candidate tracking only when we cross downward through the
+        # supervisor threshold (prev > thr and curr <= thr). This prevents
+        # enabling immediately after a recharge reset if we're already low.
+        if (not self._candidate_tracking_enabled) and self._candidate_tracking_waiting_for_threshold_cross:
+            if (self.prev_battery_pct > self._candidate_tracking_threshold) and (self.current_battery_pct <= self._candidate_tracking_threshold):
+                self._candidate_tracking_enabled = True
+                self._candidate_tracking_waiting_for_threshold_cross = False
+                self.get_logger().info(
+                    f"[DATA LOGGER] Candidate tracking enabled at "
+                    f"{self.current_battery_pct*100:.1f}% (threshold {self._candidate_tracking_threshold*100:.1f}%)"
+                )
 
         delta = self.current_battery_pct - self.prev_battery_pct
 
@@ -412,13 +510,13 @@ class DataLoggerNode(Node):
 
             return
 
+        # Fallback: if status isn't available, detect charging via battery trend.
         if delta > self._trend_inc_thresh:
+            # Battery rising => likely charging.
             self._trend_inc_count += 1
             self._trend_dec_count = 0
-        elif abs(delta) <= self._trend_stop_thresh:
-            self._trend_dec_count += 1
-            self._trend_inc_count = 0
-                else:
+        elif delta < -self._trend_stop_thresh or abs(delta) <= self._trend_stop_thresh:
+            # Battery stable or falling => likely not charging / charging ending.
             self._trend_dec_count += 1
             self._trend_inc_count = 0
 
@@ -527,6 +625,7 @@ class DataLoggerNode(Node):
                     self.path_samples.append((t, x, y, yaw))
 
             end_time = self.get_clock().now()
+            run_end_wall_time_iso: str = datetime.now().isoformat(timespec="seconds")
             total_sim_time = (end_time - self.start_time).nanoseconds * 1e-9
             total_dwell_time = len(self.visited_cylinders) * self.dwell_time
 
@@ -546,6 +645,8 @@ class DataLoggerNode(Node):
                 writer = csv.writer(f, delimiter="\t")
 
                 writer.writerow(["EXPERIMENT SUMMARY"])
+                writer.writerow(["Run Start Wall Time", self.run_start_wall_time_iso])
+                writer.writerow(["Run End Wall Time", run_end_wall_time_iso])
                 if self.run_name:
                     writer.writerow(["Run Name", self.run_name])
                 writer.writerow(["Max Linear Speed (m/s)", f"{self.max_linear:.3f}"])
@@ -749,11 +850,14 @@ class DataLoggerNode(Node):
         try:
             num_columns_tested = len(self.cylinder_positions)
             num_columns_visited = len(self.visited_cylinders)
+            run_end_wall_time_iso: str = datetime.now().isoformat(timespec="seconds")
             
             with open(self.csv_file, "w", newline="") as f:
                 writer = csv.writer(f, delimiter="\t")
                 writer.writerow(["# EMERGENCY SAVE - Partial Data"])
                 writer.writerow(["# Process was terminated unexpectedly"])
+                writer.writerow(["Run Start Wall Time", self.run_start_wall_time_iso])
+                writer.writerow(["Run End Wall Time", run_end_wall_time_iso])
                 writer.writerow(["Run Number", self.run_number])
                 writer.writerow(["Number of Columns Tested", num_columns_tested])
                 writer.writerow(["Cylinders Visited", num_columns_visited])
@@ -788,11 +892,11 @@ def main(args=None):
         node.get_logger().error(f"[Data Logger] Exception occurred: {e}, saving data...")
         node._shutdown_requested = True
     finally:
-        # Always try to save data on shutdown - this is the last chance
+        # Always try to save data on shutdown - this is the last chance.
         if not hasattr(node, "_data_saved") or not node._data_saved:
             try:
                 node.get_logger().info("Saving data in finally block...")
-        node.save_data()
+                node.save_data()
                 node._data_saved = True
                 node.get_logger().info("Data saved successfully in finally block")
             except Exception as e:
@@ -805,12 +909,16 @@ def main(args=None):
         else:
             node.get_logger().info("Data already saved, skipping save in finally block")
 
+        # Best-effort cleanup.
         try:
-        node.destroy_node()
-        rclpy.shutdown()
+            node.destroy_node()
         except Exception as e:
-            # If shutdown fails, at least we tried to save
-            node.get_logger().error(f"Error during node shutdown: {e}")
+            node.get_logger().error(f"Error during node.destroy_node(): {e}")
+
+        try:
+            rclpy.shutdown()
+        except Exception as e:
+            node.get_logger().error(f"Error during rclpy.shutdown(): {e}")
 
 
 if __name__ == "__main__":
