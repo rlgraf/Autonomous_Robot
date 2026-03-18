@@ -84,6 +84,10 @@ class SupervisorArbiter(Node):
         # -----------------------------
         self.declare_parameter("decision_battery_threshold", 0.25)
         self.declare_parameter("reserve_battery_fraction", 0.15)
+        # When we are homing/holding for recharge, we need to stay in forced mode
+        # even if `/recharge_active` goes false upon arrival (auto_recharge_node does
+        # that). Use battery fraction to decide when it's safe to resume normal ops.
+        self.declare_parameter("recharge_full_battery_threshold", 0.98)
 
         self.declare_parameter("default_drain_per_meter", 0.02)
         self.declare_parameter("drain_alpha", 0.10)
@@ -107,6 +111,9 @@ class SupervisorArbiter(Node):
 
         self.decision_battery_threshold = float(self.get_parameter("decision_battery_threshold").value)
         self.reserve_battery_fraction = float(self.get_parameter("reserve_battery_fraction").value)
+        self.recharge_full_battery_threshold = float(
+            self.get_parameter("recharge_full_battery_threshold").value
+        )
 
         self.default_drain_per_meter = float(self.get_parameter("default_drain_per_meter").value)
         self.drain_alpha = float(self.get_parameter("drain_alpha").value)
@@ -140,6 +147,10 @@ class SupervisorArbiter(Node):
         self.low_batt_decision_made = False
         self.allowed_visit_consumed = False
         self.pending_force_recharge_after_depart = False
+        # In FORCE_RECHARGE we want to avoid exiting "too early" before the
+        # battery node actually starts charging (it may take a moment to
+        # become stationary inside the charging radius).
+        self._force_recharge_seen_charging: bool = False
         self.best_candidate = None
         self.visit_count_near_station = 0  # Track visits when near station
         self.max_visits_near_station = 3  # Allow up to 3 visits when very close to station
@@ -825,13 +836,26 @@ class SupervisorArbiter(Node):
             return
 
         if self.low_batt_mode == self.LOW_BATT_FORCE_RECHARGE:
-            if not self.recharge_active:
+            # Important: `auto_recharge_node` publishes `/recharge_active` only while
+            # *homing*. On arrival it flips `/recharge_active` back to False while
+            # the battery node locks the robot in charging until full.
+            #
+            # If we cleared FORCE_RECHARGE immediately on `/recharge_active==False`,
+            # the supervisor can resume normal navigation before charging completes,
+            # which looks like "not fully committing to the recharge station".
+            #
+            # So we only release forced mode once the battery is effectively full.
+            if self.battery_charging:
+                self._force_recharge_seen_charging = True
+
+            if self._force_recharge_seen_charging and self.battery_fraction >= self.recharge_full_battery_threshold:
                 self.low_batt_mode = self.LOW_BATT_NORMAL
                 self.low_batt_decision_made = False
                 self.allowed_visit_consumed = False
                 self.pending_force_recharge_after_depart = False
                 self.best_candidate = None
                 self.visit_count_near_station = 0  # Reset visit counter after recharge
+                self._force_recharge_seen_charging = False
 
                 self._publish_decision_metrics(None, self.MODE_CODE_NORMAL)
                 self._log_mode_once(
@@ -842,6 +866,7 @@ class SupervisorArbiter(Node):
         if self.pending_force_recharge_after_depart and not self.depart_active:
             self.pending_force_recharge_after_depart = False
             self.low_batt_mode = self.LOW_BATT_FORCE_RECHARGE
+            self._force_recharge_seen_charging = False
             self.best_candidate = None
 
             self._publish_decision_metrics(None, self.MODE_CODE_FORCE_RECHARGE)
@@ -897,6 +922,7 @@ class SupervisorArbiter(Node):
                         self.pending_force_recharge_after_depart = True
                         self.visit_count_near_station = 0
                         self.low_batt_mode = self.LOW_BATT_FORCE_RECHARGE
+                        self._force_recharge_seen_charging = False
                         self._publish_decision_metrics(None, self.MODE_CODE_FORCE_RECHARGE)
                         return
             
@@ -943,6 +969,7 @@ class SupervisorArbiter(Node):
                 )
             else:
                 self.low_batt_mode = self.LOW_BATT_FORCE_RECHARGE
+                self._force_recharge_seen_charging = False
                 self.best_candidate = None
                 self.allowed_visit_consumed = False
                 self.pending_force_recharge_after_depart = False
@@ -1033,7 +1060,11 @@ class SupervisorArbiter(Node):
 
         recharge_cmd_ready = self._fresh(self.recharge, now)
         forced_recharge = (self.low_batt_mode == self.LOW_BATT_FORCE_RECHARGE)
-        effective_recharge_mode = self.recharge_active or (forced_recharge and recharge_cmd_ready)
+        # If we're in forced recharge, keep recharge mode "active" even if the
+        # auto_recharge candidate cmd is temporarily stale. In ARRIVED/holding
+        # transitions, auto_recharge_node may flip /recharge_active false while
+        # battery_node is still locking movement; we must not yield control.
+        effective_recharge_mode = self.recharge_active or forced_recharge
 
         self.supervisor_active_pub.publish(Bool(data=effective_recharge_mode))
 
@@ -1048,6 +1079,7 @@ class SupervisorArbiter(Node):
                 self.cmd_pub.publish(self.recharge.msg)
                 return
 
+            # No fresh recharge command; hold position.
             self.cmd_pub.publish(zero_twist())
             return
 
