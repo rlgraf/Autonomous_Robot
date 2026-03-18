@@ -61,6 +61,11 @@ class ObjectNavigator(Node):
         # Current target world position
         self.target_wx: float | None = None
         self.target_wy: float | None = None
+        self._using_recommended_target: bool = False
+
+        # Latest supervisor-recommended target (world coords)
+        self._recommended_wx: float | None = None
+        self._recommended_wy: float | None = None
 
         # State machine
         self.state = self.SEARCHING
@@ -81,6 +86,7 @@ class ObjectNavigator(Node):
         # Candidate topic; supervisor owns /cmd_vel
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel_nav', 10)
         self.visited_pub = self.create_publisher(Float32MultiArray, '/visited_columns', 10)
+        self.depart_pub = self.create_publisher(Bool, '/depart_request', 10)
         self.create_subscription(Float32MultiArray, '/detected_objects',
                                  self.detection_callback, 10)
         self.create_subscription(Odometry, '/odom_gt',
@@ -91,6 +97,8 @@ class ObjectNavigator(Node):
                                  self.low_battery_callback, 10)
         self.create_subscription(Bool, '/supervisor_active',
                                  self.supervisor_callback, 10)
+        self.create_subscription(Float32MultiArray, '/recommended_target',
+                                 self.recommended_target_callback, 10)
 
         # 20 Hz control loop via timer
         self.create_timer(0.05, self.control_loop)
@@ -101,6 +109,29 @@ class ObjectNavigator(Node):
     def supervisor_callback(self, msg: Bool):
         """Receive supervisor active flag."""
         self.supervisor_active = msg.data
+
+    def recommended_target_callback(self, msg: Float32MultiArray):
+        """Receive supervisor candidate target world coords, if any."""
+        data = list(msg.data)
+        if len(data) < 2:
+            self._recommended_wx = None
+            self._recommended_wy = None
+            return
+
+        try:
+            wx = float(data[0])
+            wy = float(data[1])
+        except (TypeError, ValueError):
+            self._recommended_wx = None
+            self._recommended_wy = None
+            return
+
+        if math.isfinite(wx) and math.isfinite(wy):
+            self._recommended_wx = wx
+            self._recommended_wy = wy
+        else:
+            self._recommended_wx = None
+            self._recommended_wy = None
 
     def odom_callback(self, msg: Odometry):
         self.robot_x = msg.pose.pose.position.x
@@ -197,10 +228,30 @@ class ObjectNavigator(Node):
 
     # ── State handlers ─────────────────────────────────────────────────────────
     def _handle_searching(self):
+        # During low-battery "visit before recharge", the supervisor publishes a
+        # desired cylinder as /recommended_target. Follow it when we don't
+        # already have an active target.
+        if (
+            self.low_battery_shutdown
+            and (not self.supervisor_active)
+            and self._recommended_wx is not None
+            and self._recommended_wy is not None
+        ):
+            self._stop()
+            self.target_wx = self._recommended_wx
+            self.target_wy = self._recommended_wy
+            self._using_recommended_target = True
+            self.get_logger().info(
+                f'Using supervisor recommended target: ({self.target_wx:.2f}, {self.target_wy:.2f})'
+            )
+            self.state = self.ROTATING
+            return
+
         target = self._pick_nearest_unvisited()
         if target is not None:
             self._stop()
             self.target_wx, self.target_wy = target
+            self._using_recommended_target = False
             self.get_logger().info(
                 f'New target acquired: ({self.target_wx:.2f}, {self.target_wy:.2f})'
             )
@@ -281,6 +332,15 @@ class ObjectNavigator(Node):
 
             self.target_wx = None
             self.target_wy = None
+
+            # Let the supervisor know the low-battery visit is complete.
+            # This is how it transitions from ALLOW_ONE_VISIT to the next decision
+            # (possibly forced recharge).
+            if self.low_battery_shutdown and (not self.supervisor_active) and self._using_recommended_target:
+                self.depart_pub.publish(Bool(data=True))
+
+            self._using_recommended_target = False
+
             # Go to SEARCHING so the robot rotates and re-acquires
             # a fresh view before selecting the next target
             self.state = self.SEARCHING

@@ -101,11 +101,17 @@ class AutoRechargeNode(Node):
         self._nav_state = IDLE
         self._target_station = None   # (x, y)
         self._avoidance_paused = False  # avoidance node is currently overriding cmd_vel
+        # Supervisor publishes /supervisor_active whenever it wants control
+        # for forced recharge (LOW_BATTERY_FORCE_RECHARGE) or active homing.
+        # When false, we must not start homing (so we can let move5 handle
+        # reward-based low-battery visits).
+        self._supervisor_active = False
 
         # ── Subscriptions ─────────────────────────────────────────────────────
         self.create_subscription(BatteryState, 'battery_status', self._battery_cb, 10)
         self.create_subscription(Odometry, '/odom_gt', self._odom_cb, 10)
         self.create_subscription(Bool, '/navigation_paused', self._paused_cb, 10)
+        self.create_subscription(Bool, '/supervisor_active', self._supervisor_active_cb, 10)
 
         # ── Publishers ────────────────────────────────────────────────────────
         # Candidate topic; supervisor owns /cmd_vel
@@ -131,6 +137,9 @@ class AutoRechargeNode(Node):
 
     def _paused_cb(self, msg: Bool):
         self._avoidance_paused = msg.data
+
+    def _supervisor_active_cb(self, msg: Bool):
+        self._supervisor_active = bool(msg.data)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -172,7 +181,9 @@ class AutoRechargeNode(Node):
 
         # ── Trigger homing when battery is low ────────────────────────────────
         if self._nav_state == IDLE:
-            if self._battery_pct < self._low_thresh:
+            # Only start homing when supervisor has put us into forced recharge
+            # (i.e., /supervisor_active is true).
+            if self._supervisor_active and self._battery_pct < self._low_thresh:
                 self._target_station = self._nearest_station()
                 self._nav_state = TURNING
                 self.get_logger().warn(
